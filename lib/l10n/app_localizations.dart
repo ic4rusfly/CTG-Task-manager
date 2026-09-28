@@ -184,6 +184,12 @@ class AppLocalizations {
   String get errorBody => _get('errorBody');
   String get loading => _get('loading');
   String get signedOut => _get('signedOut');
+  String get mute => _get('mute');
+  String get unmute => _get('unmute');
+  String get muted => _get('muted');
+  String get mutedHint => _get('mutedHint');
+  String get seen => _get('seen');
+  String get sent => _get('sent');
 
   String minutesAgo(int count) {
     var s = _get('minutesAgo');
@@ -240,6 +246,7 @@ class AppLocalizations {
     s = s.replaceAll('{limit}', '$limit');
     return s;
   }
+  String seenByCount(int count) => _plural('seenByCount', count);
 
   /// Minimal ICU plural support for the few plural keys we use.
   String _plural(String key, int count) {
@@ -461,6 +468,13 @@ const _strings = <String, Map<String, String>>{
     'errorBody': 'We could not load this. Check your connection and try again.',
     'loading': 'Loading',
     'signedOut': 'You are signed out',
+    'mute': 'Mute',
+    'unmute': 'Unmute',
+    'muted': 'Muted',
+    'mutedHint': 'You still see messages, but they will not notify you',
+    'seen': 'Seen',
+    'seenByCount': '{count, plural, =0{Not seen yet} =1{Seen by 1 member} other{Seen by {count} members}}',
+    'sent': 'Sent',
   },
   'fr': <String, String>{
     'appName': 'CTG Hub',
@@ -634,6 +648,13 @@ const _strings = <String, Map<String, String>>{
     'errorBody': 'Chargement impossible. Vérifiez votre connexion et réessayez.',
     'loading': 'Chargement',
     'signedOut': 'Vous êtes déconnecté',
+    'mute': 'Mettre en sourdine',
+    'unmute': 'Réactiver les alertes',
+    'muted': 'En sourdine',
+    'mutedHint': 'Vous voyez les messages, mais sans notification',
+    'seen': 'Vu',
+    'seenByCount': '{count, plural, =0{Pas encore vu} =1{Vu par 1 membre} other{Vu par {count} membres}}',
+    'sent': 'Envoyé',
   },
   'ar': <String, String>{
     'appName': 'مركز CTG',
@@ -807,5 +828,12 @@ const _strings = <String, Map<String, String>>{
     'errorBody': 'تعذر التحميل. تحقق من الاتصال وحاول مرة أخرى.',
     'loading': 'جارٍ التحميل',
     'signedOut': 'تم تسجيل خروجك',
+    'mute': 'كتم',
+    'unmute': 'إلغاء الكتم',
+    'muted': 'مكتوم',
+    'mutedHint': 'ستظل ترى الرسائل دون تلقي إشعارات',
+    'seen': 'تمت المشاهدة',
+    'seenByCount': '{count, plural, =0{لم يُشاهد بعد} =1{شاهده عضو واحد} =2{شاهده عضوان} few{شاهده {count} أعضاء} other{شاهده {count} عضوا}}',
+    'sent': 'أُرسلت',
   },
 };

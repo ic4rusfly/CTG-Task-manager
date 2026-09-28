@@ -95,6 +95,19 @@ manage members as admin, and switch language (including RTL Arabic) and theme.
   are hidden from the channel timeline, and the thread has its own composer.
   A reply notifies the root author — never the whole channel.
 
+## Mute and read receipts
+
+- The bell in the conversation header (or a long press in the list) mutes a
+  conversation for **you only**: it stays visible, its unread count goes
+  quiet, and it stops notifying. Mentions always get through, on both the
+  Cloud Functions path and the mock one.
+- Mutes live in `users/{uid}.mutedChannels`, which is the list the Functions
+  already honoured; the client writes it with an array union or remove.
+- The last message you sent shows a receipt derived from
+  `channels/{id}.lastReadAt`: **Sent**, **Seen**, or **Seen by N members**.
+  `lib/core/receipts.dart` holds that logic, so it is unit-tested without a
+  widget.
+
 ## Push notifications
 
 - After sign-in the app asks for permission and registers the device through

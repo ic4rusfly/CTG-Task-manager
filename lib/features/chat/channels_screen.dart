@@ -119,6 +119,7 @@ class _ChannelTile extends ConsumerWidget {
     final t = tr(context);
     final locale = Localizations.localeOf(context).languageCode;
     final unread = ref.watch(unreadCountProvider(channel.id));
+    final muted = ref.watch(currentUserProvider)?.mutedChannels.contains(channel.id) ?? false;
     final title = channel.isDm ? (peer?.displayName ?? '') : '# ${channel.name}';
 
     return Padding(
@@ -135,7 +136,16 @@ class _ChannelTile extends ConsumerWidget {
                   size: 20,
                 ),
               ),
-        title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+        title: Row(
+          children: [
+            Flexible(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis)),
+            if (muted) ...[
+              const SizedBox(width: 6),
+              Icon(Icons.notifications_off_outlined,
+                  size: 14, color: Theme.of(context).colorScheme.outline),
+            ],
+          ],
+        ),
         subtitle: Text(
           channel.lastMessageText.isEmpty ? channel.topic : channel.lastMessageText,
           maxLines: 1,
@@ -155,15 +165,38 @@ class _ChannelTile extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary,
+                  color: muted
+                      ? Theme.of(context).colorScheme.surfaceContainerHighest
+                      : Theme.of(context).colorScheme.primary,
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Text('$unread',
-                    style: const TextStyle(color: Colors.white, fontSize: 11)),
+                child: Text(
+                  '$unread',
+                  style: TextStyle(
+                    color: muted
+                        ? Theme.of(context).colorScheme.onSurface
+                        : Colors.white,
+                    fontSize: 11,
+                  ),
+                ),
               ),
           ],
         ),
         onTap: onTap,
+        onLongPress: () async {
+          final me = ref.read(currentUserProvider);
+          if (me == null) return;
+          await ref
+              .read(userRepositoryProvider)
+              .setChannelMuted(me.id, channel.id, !muted);
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(muted ? t.unmute : t.mutedHint),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        },
       ),
     );
   }

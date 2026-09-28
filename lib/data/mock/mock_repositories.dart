@@ -99,6 +99,20 @@ class MockUserRepository implements UserRepository {
   }
 
   @override
+  Future<void> setChannelMuted(String uid, String channelId, bool muted) async {
+    final i = _db.users.indexWhere((u) => u.id == uid);
+    if (i == -1) return;
+    final list = [..._db.users[i].mutedChannels];
+    if (muted) {
+      if (!list.contains(channelId)) list.add(channelId);
+    } else {
+      list.remove(channelId);
+    }
+    _db.users[i] = _db.users[i].copyWith(mutedChannels: list);
+    _db.pingUsers();
+  }
+
+  @override
   Future<void> setActive(String uid, bool active) async {
     final u = _db.users.firstWhere((u) => u.id == uid);
     _replace(u.copyWith(active: active));
@@ -566,6 +580,10 @@ class MockNotifier {
 
   AppLocalizations _l10n(String uid) => AppLocalizations(_user(uid)?.locale ?? 'en');
 
+  /// Mentions always get through; everything else respects the mute list.
+  bool _muted(String uid, String channelId) =>
+      _user(uid)?.mutedChannels.contains(channelId) ?? false;
+
   Future<void> mention({
     required List<String> recipientIds,
     required String actorId,
@@ -596,6 +614,7 @@ class MockNotifier {
   }) async {
     if (recipientId == actorId) return;
     final actor = _user(actorId)?.displayName ?? '';
+    if (_muted(recipientId, channelId)) return;
     final t = _l10n(recipientId);
     await _repo.add(AppNotification(
       id: '',

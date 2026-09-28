@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:ctg_hub/data/mock/mock_db.dart';
 import 'package:ctg_hub/data/mock/mock_repositories.dart';
+import 'package:ctg_hub/core/receipts.dart';
 import 'package:ctg_hub/domain/models/models.dart';
 import 'package:ctg_hub/domain/push_service.dart';
 import 'package:ctg_hub/domain/repositories/repositories.dart';
@@ -121,6 +122,78 @@ void main() {
   group('threads', threadTests);
   group('media', mediaTests);
   group('push', pushTests);
+  group('mute and receipts', muteAndReceiptTests);
+}
+
+// ---------------------------------------------------------------------------
+// Muting a conversation and read receipts.
+// ---------------------------------------------------------------------------
+void muteAndReceiptTests() {
+  late MockDb db;
+  late MockNotificationRepository notifications;
+  late MockChatRepository chat;
+  late MockUserRepository users;
+
+  setUp(() {
+    db = MockDb();
+    notifications = MockNotificationRepository(db);
+    chat = MockChatRepository(db, MockNotifier(db, notifications));
+    users = MockUserRepository(db);
+  });
+
+  Message reply(String text, {List<String> mentions = const []}) => Message(
+        id: '',
+        channelId: 'c_general',
+        senderId: 'u3',
+        sentAt: DateTime.now(),
+        text: text,
+        replyToId: 'm1',
+        mentions: mentions,
+      );
+
+  test('muting is per member and per conversation', () async {
+    await users.setChannelMuted('u1', 'c_general', true);
+    expect(db.users.firstWhere((u) => u.id == 'u1').mutedChannels, ['c_general']);
+    expect(db.users.firstWhere((u) => u.id == 'u2').mutedChannels, isEmpty);
+
+    await users.setChannelMuted('u1', 'c_general', false);
+    expect(db.users.firstWhere((u) => u.id == 'u1').mutedChannels, isEmpty);
+  });
+
+  test('a muted conversation sends no thread notification', () async {
+    await users.setChannelMuted('u1', 'c_general', true);
+    await chat.sendMessage(reply('Ping.'));
+    expect(db.notifications['u1'] ?? const <AppNotification>[], isEmpty);
+  });
+
+  test('a mention still gets through a mute', () async {
+    await users.setChannelMuted('u1', 'c_general', true);
+    await chat.sendMessage(reply('Ping @Yasmine', mentions: const ['u1']));
+    final mentions = (db.notifications['u1'] ?? const <AppNotification>[])
+        .where((n) => n.kind == NotificationKind.mention);
+    expect(mentions, hasLength(1));
+  });
+
+  test('read receipts count the members who caught up', () async {
+    final channel = db.channels.firstWhere((c) => c.id == 'c_general');
+    final message = db.messages['c_general']!.firstWhere((m) => m.id == 'm6');
+
+    final readers = seenBy(channel, message);
+    expect(readers, isNot(contains(message.senderId)));
+    expect(readers, contains('u2'));
+    expect(seenByAll(channel, message), isFalse);
+  });
+
+  test('marking a conversation read updates the receipt', () async {
+    final before = db.channels.firstWhere((c) => c.id == 'c_dm_2_3');
+    final message = db.messages['c_dm_2_3']!.last;
+    expect(seenBy(before, message), isEmpty);
+
+    await chat.markRead('c_dm_2_3', 'u2');
+    final after = db.channels.firstWhere((c) => c.id == 'c_dm_2_3');
+    expect(seenBy(after, message), ['u2']);
+    expect(seenByAll(after, message), isTrue);
+  });
 }
 
 // ---------------------------------------------------------------------------

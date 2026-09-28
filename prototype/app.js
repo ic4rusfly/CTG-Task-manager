@@ -133,6 +133,8 @@ const ICONS = {
   back: svg('<path d="M19 12H5M12 19l-7-7 7-7"/>'),
   bell: svg('<path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>'),
   thread: svg('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/>'),
+  bellOff: svg('<path d="M13.7 21a2 2 0 0 1-3.4 0"/><path d="M18.6 13A17 17 0 0 1 18 8a6 6 0 0 0-9.3-5"/><path d="M6.3 6.3A6 6 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M2 2l20 20"/>'),
+  check: svg('<path d="M4 12l5 5L20 6"/>'),
   at: svg('<circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/>'),
   clock: svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
   swap: svg('<path d="M17 2l4 4-4 4"/><path d="M3 6h18M7 22l-4-4 4-4"/><path d="M21 18H3"/>'),
@@ -211,12 +213,24 @@ function withMentions(text) {
   return out;
 }
 
+const isMuted = (channelId) => (me().muted || []).includes(channelId);
+
+/** Members, other than the sender, whose read stamp is after the message. */
+const seenBy = (channel, message) =>
+  channel.members.filter((uid) => uid !== message.from
+    && channel.read[uid] && channel.read[uid] >= message.at);
+const seenByAll = (channel, message) =>
+  channel.members.filter((uid) => uid !== message.from).length > 0
+  && seenBy(channel, message).length === channel.members.filter((uid) => uid !== message.from).length;
+
 const myNotifications = () =>
   DB.notifications.filter((n) => n.uid === state.me).sort((a, b) => b.at - a.at);
 const unreadNotifications = () => myNotifications().filter((n) => !n.read).length;
 
 function notify(uid, kind, title, body, route) {
   if (uid === state.me) return;
+  const user = byId(DB.users, uid);
+  if (kind !== 'mention' && route.channel && (user.muted || []).includes(route.channel)) return;
   const item = { id: uid + Date.now() + Math.random(), uid, kind, title, body, route, read: false, at: new Date() };
   DB.notifications.push(item);
 }
@@ -406,12 +420,13 @@ function chatView() {
       <button class="conv ${current && c.id === current.id ? 'active' : ''}" data-act="channel" data-id="${c.id}">
         ${peer ? avatar(peer, '', true) : `<span class="hash">${c.type === 'private' ? ICONS.lock : ICONS.hash}</span>`}
         <span class="grow">
-          <div class="t">${esc(channelTitle(c))}</div>
+          <div class="t">${esc(channelTitle(c))}${isMuted(c.id)
+            ? ` <span class="small muted" title="${esc(t('muted'))}">${ICONS.bellOff}</span>` : ''}</div>
           <div class="p">${esc(c.last ? (c.last.text || c.last.att?.name || t('attachments')) : c.topic)}</div>
         </span>
         <span class="meta">
           <div>${c.last ? esc(relative(c.last.at)) : ''}</div>
-          ${u ? `<span class="unread">${u}</span>` : ''}
+          ${u ? `<span class="unread${isMuted(c.id) ? ' quiet' : ''}">${u}</span>` : ''}
         </span>
       </button>`;
   };
@@ -469,16 +484,24 @@ function chatMain(c) {
         : sameDay(m.at, new Date(Date.now() - 86400000)) ? t('yesterday') : fmtDay(m.at);
       sep = `<div class="day-sep">${esc(label)}</div>`;
     }
-    return sep + messageHtml(m);
+    const last = m === msgs[msgs.length - 1] && m.from === state.me;
+    return sep + messageHtml(m, { receipt: last ? c : null });
   }).join('');
 
   return `
     <div class="topbar" style="border-top:0">
       <div>
         <h1>${esc(channelTitle(c))}</h1>
-        <div class="sub">${esc(peer ? (peer.online ? t('online') : t('offline')) : (c.topic || t('membersCount', { count: c.members.length })))}</div>
+        <div class="sub">${esc(isMuted(c.id) ? t('muted')
+          : peer ? (peer.online ? t('online') : t('offline'))
+          : (c.topic || t('membersCount', { count: c.members.length })))}</div>
       </div>
-      <div class="right">${stack(c.members)}</div>
+      <div class="right">
+        <button class="btn small ghost" data-act="toggle-mute" data-id="${c.id}"
+          title="${esc(isMuted(c.id) ? t('unmute') : t('mute'))}">
+          ${isMuted(c.id) ? ICONS.bellOff : ICONS.bell}${esc(isMuted(c.id) ? t('unmute') : t('mute'))}</button>
+        ${stack(c.members)}
+      </div>
     </div>
     <div class="messages" id="messages">${rows || `<div class="empty">${esc(t('messageHint'))}</div>`}</div>
     <div class="composer">
@@ -541,6 +564,16 @@ function messageHtml(m, opts = {}) {
         ? 'background:var(--surface-2);border-radius:6px;padding:3px 6px' : ''}">${withMentions(m.text)}</div>`
     : '';
 
+  let receipt = '';
+  if (opts.receipt) {
+    const readers = seenBy(opts.receipt, m);
+    const all = seenByAll(opts.receipt, m);
+    const label = !readers.length ? t('sent')
+      : (opts.receipt.type === 'dm' || all) ? t('seen') : t('seenByCount', { count: readers.length });
+    receipt = `<div class="small" style="margin-top:3px;color:${all ? 'var(--accent)' : 'var(--text-dim)'}">
+      ${readers.length ? ICONS.checkAll : ICONS.check}${esc(label)}</div>`;
+  }
+
   const reactions = Object.keys(m.reactions || {}).map((code) => {
     const on = m.reactions[code].includes(state.me);
     return `<button class="reaction ${on ? 'on' : ''}" data-act="react" data-id="${m.id}" data-code="${code}">
@@ -558,6 +591,7 @@ function messageHtml(m, opts = {}) {
         <div class="head"><span class="who">${esc(userName(m.from))}</span>
           <span class="when">${esc(fmtTime(m.at))}</span></div>
         <div class="bubble">${body}${text}</div>
+        ${receipt}
         <div class="reactions">${reactions}</div>
         ${replies ? `<button class="btn small ghost" data-act="open-thread" data-id="${m.id}"
           style="margin-top:4px">${ICONS.thread}${esc(t('repliesCount', { count: replies }))}</button>` : ''}
@@ -1339,6 +1373,13 @@ function handle(act, el) {
       state.toast = null;
       state.view = 'chat';
       break;
+    case 'toggle-mute': {
+      const user = me();
+      user.muted = user.muted || [];
+      const i = user.muted.indexOf(id);
+      i === -1 ? user.muted.push(id) : user.muted.splice(i, 1);
+      break;
+    }
     case 'toggle-push':
       state.push = !state.push;
       if (!state.push) state.toast = null;

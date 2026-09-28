@@ -48,4 +48,12 @@ class FirestoreUserRepository implements UserRepository {
   @override
   Future<void> setActive(String uid, bool active) =>
       _db.collection('users').doc(uid).update({'active': active});
+
+  @override
+  Future<void> setChannelMuted(String uid, String channelId, bool muted) =>
+      _db.collection('users').doc(uid).set({
+        'mutedChannels': muted
+            ? FieldValue.arrayUnion([channelId])
+            : FieldValue.arrayRemove([channelId]),
+      }, SetOptions(merge: true));
 }

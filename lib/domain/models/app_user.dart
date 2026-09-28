@@ -16,6 +16,7 @@ class AppUser {
     this.online = false,
     this.lastSeenAt,
     this.active = true,
+    this.mutedChannels = const [],
   });
 
   final String id;
@@ -32,6 +33,9 @@ class AppUser {
   final bool online;
   final DateTime? lastSeenAt;
   final bool active;
+
+  /// Channels this member muted: still visible, never notified.
+  final List<String> mutedChannels;
 
   bool get isAdmin => role == UserRole.admin;
   bool get canAssign => role == UserRole.admin || role == UserRole.lead;
@@ -56,6 +60,7 @@ class AppUser {
     bool? online,
     DateTime? lastSeenAt,
     bool? active,
+    List<String>? mutedChannels,
   }) {
     return AppUser(
       id: id,
@@ -72,6 +77,7 @@ class AppUser {
       online: online ?? this.online,
       lastSeenAt: lastSeenAt ?? this.lastSeenAt,
       active: active ?? this.active,
+      mutedChannels: mutedChannels ?? this.mutedChannels,
     );
   }
 
@@ -89,6 +95,7 @@ class AppUser {
         'online': online,
         'lastSeenAt': lastSeenAt?.toIso8601String(),
         'active': active,
+        'mutedChannels': mutedChannels,
       };
 
   factory AppUser.fromMap(String id, Map<String, dynamic> map) => AppUser(
@@ -106,6 +113,7 @@ class AppUser {
         online: map['online'] as bool? ?? false,
         lastSeenAt: DateTime.tryParse(map['lastSeenAt'] as String? ?? ''),
         active: map['active'] as bool? ?? true,
+        mutedChannels: (map['mutedChannels'] as List?)?.cast<String>() ?? const [],
       );
 }
 

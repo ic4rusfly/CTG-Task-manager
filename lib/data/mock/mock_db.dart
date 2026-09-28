@@ -299,6 +299,25 @@ class MockDb {
     msg('m41', 'c_dm_1_2', 'u2', 'Already done, assigned as a group task.', const Duration(minutes: 40));
     msg('m50', 'c_dm_2_3', 'u3', 'Sending the updated palette now.', const Duration(hours: 3));
 
+    // Seeded read receipts: everybody has caught up on the DM, most of the
+    // team has read #general, so the chat shows "Seen" and "Seen by N".
+    final readStamps = <String, Map<String, DateTime>>{
+      'c_general': {
+        'u2': now.subtract(const Duration(minutes: 5)),
+        'u3': now.subtract(const Duration(minutes: 6)),
+        'u4': now.subtract(const Duration(hours: 4)),
+      },
+      'c_dm_1_2': {
+        'u1': now.subtract(const Duration(minutes: 35)),
+        'u2': now.subtract(const Duration(minutes: 30)),
+      },
+      'c_tech': {'u6': now.subtract(const Duration(hours: 1))},
+    };
+    for (var i = 0; i < channels.length; i++) {
+      final stamps = readStamps[channels[i].id];
+      if (stamps != null) channels[i] = channels[i].copyWith(lastReadAt: stamps);
+    }
+
     for (var i = 0; i < channels.length; i++) {
       final c = channels[i];
       // Thread replies do not become the conversation preview.

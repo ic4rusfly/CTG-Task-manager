@@ -271,5 +271,19 @@
   "errorTitle": "Something went wrong",
   "errorBody": "We could not load this. Check your connection and try again.",
   "loading": "Loading",
-  "signedOut": "You are signed out"
+  "signedOut": "You are signed out",
+  "mute": "Mute",
+  "unmute": "Unmute",
+  "muted": "Muted",
+  "mutedHint": "You still see messages, but they will not notify you",
+  "seen": "Seen",
+  "seenByCount": "{count, plural, =0{Not seen yet} =1{Seen by 1 member} other{Seen by {count} members}}",
+  "@seenByCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sent": "Sent"
 }

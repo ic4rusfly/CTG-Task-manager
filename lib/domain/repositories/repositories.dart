@@ -18,6 +18,8 @@ abstract class UserRepository {
   Future<void> setLocale(String uid, String locale);
   Future<void> setRole(String uid, UserRole role);
   Future<void> setActive(String uid, bool active);
+  /// Mutes or unmutes one conversation for one member.
+  Future<void> setChannelMuted(String uid, String channelId, bool muted);
 }
 
 abstract class ChatRepository {

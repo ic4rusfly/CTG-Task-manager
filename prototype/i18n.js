@@ -171,7 +171,14 @@ window.I18N = {
     "errorTitle": "Something went wrong",
     "errorBody": "We could not load this. Check your connection and try again.",
     "loading": "Loading",
-    "signedOut": "You are signed out"
+    "signedOut": "You are signed out",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "muted": "Muted",
+    "mutedHint": "You still see messages, but they will not notify you",
+    "seen": "Seen",
+    "seenByCount": "{count, plural, =0{Not seen yet} =1{Seen by 1 member} other{Seen by {count} members}}",
+    "sent": "Sent"
   },
   "fr": {
     "appName": "CTG Hub",
@@ -344,7 +351,14 @@ window.I18N = {
     "errorTitle": "Une erreur est survenue",
     "errorBody": "Chargement impossible. Vérifiez votre connexion et réessayez.",
     "loading": "Chargement",
-    "signedOut": "Vous êtes déconnecté"
+    "signedOut": "Vous êtes déconnecté",
+    "mute": "Mettre en sourdine",
+    "unmute": "Réactiver les alertes",
+    "muted": "En sourdine",
+    "mutedHint": "Vous voyez les messages, mais sans notification",
+    "seen": "Vu",
+    "seenByCount": "{count, plural, =0{Pas encore vu} =1{Vu par 1 membre} other{Vu par {count} membres}}",
+    "sent": "Envoyé"
   },
   "ar": {
     "appName": "مركز CTG",
@@ -517,6 +531,13 @@ window.I18N = {
     "errorTitle": "حدث خطأ ما",
     "errorBody": "تعذر التحميل. تحقق من الاتصال وحاول مرة أخرى.",
     "loading": "جارٍ التحميل",
-    "signedOut": "تم تسجيل خروجك"
+    "signedOut": "تم تسجيل خروجك",
+    "mute": "كتم",
+    "unmute": "إلغاء الكتم",
+    "muted": "مكتوم",
+    "mutedHint": "ستظل ترى الرسائل دون تلقي إشعارات",
+    "seen": "تمت المشاهدة",
+    "seenByCount": "{count, plural, =0{لم يُشاهد بعد} =1{شاهده عضو واحد} =2{شاهده عضوان} few{شاهده {count} أعضاء} other{شاهده {count} عضوا}}",
+    "sent": "أُرسلت"
   }
 };

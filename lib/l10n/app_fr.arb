@@ -212,5 +212,12 @@
   "errorTitle": "Une erreur est survenue",
   "errorBody": "Chargement impossible. Vérifiez votre connexion et réessayez.",
   "loading": "Chargement",
-  "signedOut": "Vous êtes déconnecté"
+  "signedOut": "Vous êtes déconnecté",
+  "mute": "Mettre en sourdine",
+  "unmute": "Réactiver les alertes",
+  "muted": "En sourdine",
+  "mutedHint": "Vous voyez les messages, mais sans notification",
+  "seen": "Vu",
+  "seenByCount": "{count, plural, =0{Pas encore vu} =1{Vu par 1 membre} other{Vu par {count} membres}}",
+  "sent": "Envoyé"
 }

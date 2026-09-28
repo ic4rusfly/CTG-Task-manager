@@ -6,6 +6,7 @@ import '../../core/attachment_picker.dart';
 import '../../core/formatters.dart';
 import '../../core/labels.dart';
 import '../../core/mentions.dart';
+import '../../core/receipts.dart';
 import '../../core/theme.dart';
 import '../../domain/models/models.dart';
 import '../../providers/providers.dart';
@@ -88,11 +89,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             Text(title, style: Theme.of(context).textTheme.titleMedium),
             if (channel != null)
               Text(
-                channel.isDm
-                    ? (peer?.online == true ? t.online : t.offline)
-                    : (channel.topic.isEmpty
-                        ? t.membersCount(channel.memberIds.length)
-                        : channel.topic),
+                me != null && me.mutedChannels.contains(channel.id)
+                    ? t.muted
+                    : channel.isDm
+                        ? (peer?.online == true ? t.online : t.offline)
+                        : (channel.topic.isEmpty
+                            ? t.membersCount(channel.memberIds.length)
+                            : channel.topic),
                 style: Theme.of(context).textTheme.labelSmall,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -100,6 +103,32 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ],
         ),
         actions: [
+          if (channel != null)
+            IconButton(
+              tooltip: me != null && me.mutedChannels.contains(channel.id)
+                  ? t.unmute
+                  : t.mute,
+              icon: Icon(
+                me != null && me.mutedChannels.contains(channel.id)
+                    ? Icons.notifications_off_outlined
+                    : Icons.notifications_none,
+              ),
+              onPressed: me == null
+                  ? null
+                  : () async {
+                      final muted = me.mutedChannels.contains(channel.id);
+                      await ref
+                          .read(userRepositoryProvider)
+                          .setChannelMuted(me.id, channel.id, !muted);
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(muted ? t.unmute : t.mutedHint),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    },
+            ),
           if (channel != null && !channel.isDm)
             IconButton(
               icon: const Icon(Icons.group_outlined),
@@ -147,6 +176,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                             grouped: !newDay &&
                                 prev?.senderId == m.senderId &&
                                 m.sentAt.difference(prev!.sentAt).inMinutes < 5,
+                            // Read receipts only under the last message I sent.
+                            showReceipt: channel != null &&
+                                m.senderId == me?.id &&
+                                i == messages.length - 1,
+                            channel: channel,
                           ),
                         ],
                       );
@@ -207,6 +241,8 @@ class MessageBubble extends ConsumerWidget {
     required this.isMine,
     this.grouped = false,
     this.showThread = true,
+    this.showReceipt = false,
+    this.channel,
   });
 
   final Message message;
@@ -216,6 +252,10 @@ class MessageBubble extends ConsumerWidget {
 
   /// Thread affordances are hidden inside the thread view itself.
   final bool showThread;
+
+  /// Shows "Seen by N" under the last message the member sent.
+  final bool showReceipt;
+  final Channel? channel;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -278,6 +318,8 @@ class MessageBubble extends ConsumerWidget {
                         ),
                     ],
                     const SizedBox(height: 4),
+                    if (showReceipt && channel != null)
+                      _Receipt(channel: channel!, message: message),
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -405,6 +447,49 @@ class MessageBubble extends ConsumerWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// "Sent" / "Seen" / "Seen by N members", from channels/{id}.lastReadAt.
+class _Receipt extends StatelessWidget {
+  const _Receipt({required this.channel, required this.message});
+
+  final Channel channel;
+  final Message message;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = tr(context);
+    final scheme = Theme.of(context).colorScheme;
+    final readers = seenBy(channel, message);
+    final everyone = seenByAll(channel, message);
+
+    final label = readers.isEmpty
+        ? t.sent
+        : channel.isDm || everyone
+            ? t.seen
+            : t.seenByCount(readers.length);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            readers.isEmpty ? Icons.check : Icons.done_all,
+            size: 12,
+            color: everyone ? scheme.primary : scheme.outline,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: everyone ? scheme.primary : scheme.outline,
+                ),
+          ),
+        ],
       ),
     );
   }

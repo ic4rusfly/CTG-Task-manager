@@ -6,12 +6,12 @@
   const ago = (mins) => new Date(now.getTime() - mins * 60000);
 
   const users = [
-    { id: 'u1', name: 'Yasmine Bennani', email: 'yasmine@ctg.ma', title: 'Program Director', team: 't1', role: 'admin', locale: 'fr', online: true, bio: 'Coordinates CTG programs and partnerships.', skills: ['Leadership', 'Partnerships'], phone: '+212 6 12 34 56 78' },
-    { id: 'u2', name: 'Omar El Idrissi', email: 'omar@ctg.ma', title: 'Tech Lead', team: 't2', role: 'lead', locale: 'en', online: true, bio: 'Builds the CTG platform. Flutter and Firebase.', skills: ['Flutter', 'Firebase', 'CI/CD'], phone: '' },
-    { id: 'u3', name: 'Salma Ait Taleb', email: 'salma@ctg.ma', title: 'Designer', team: 't2', role: 'member', locale: 'ar', online: false, bio: 'UI/UX, brand and motion.', skills: ['Figma', 'Branding'], phone: '' },
-    { id: 'u4', name: 'Mehdi Ouazzani', email: 'mehdi@ctg.ma', title: 'Events Coordinator', team: 't3', role: 'lead', locale: 'fr', online: false, bio: 'Logistics, venues and volunteers.', skills: ['Logistics', 'Community'], phone: '' },
-    { id: 'u5', name: 'Nour Haddad', email: 'nour@ctg.ma', title: 'Communications', team: 't3', role: 'member', locale: 'ar', online: true, bio: 'Social media and press.', skills: ['Copywriting', 'Social'], phone: '' },
-    { id: 'u6', name: 'Anas Rahmouni', email: 'anas@ctg.ma', title: 'Developer', team: 't2', role: 'member', locale: 'en', online: false, bio: 'Backend and data.', skills: ['Node', 'Firestore'], phone: '' },
+    { id: 'u1', name: 'Yasmine Bennani', email: 'yasmine@ctg.ma', title: 'Program Director', team: 't1', role: 'admin', locale: 'fr', online: true, bio: 'Coordinates CTG programs and partnerships.', skills: ['Leadership', 'Partnerships'], phone: '+212 6 12 34 56 78', muted: []  },
+    { id: 'u2', name: 'Omar El Idrissi', email: 'omar@ctg.ma', title: 'Tech Lead', team: 't2', role: 'lead', locale: 'en', online: true, bio: 'Builds the CTG platform. Flutter and Firebase.', skills: ['Flutter', 'Firebase', 'CI/CD'], phone: '', muted: []  },
+    { id: 'u3', name: 'Salma Ait Taleb', email: 'salma@ctg.ma', title: 'Designer', team: 't2', role: 'member', locale: 'ar', online: false, bio: 'UI/UX, brand and motion.', skills: ['Figma', 'Branding'], phone: '', muted: []  },
+    { id: 'u4', name: 'Mehdi Ouazzani', email: 'mehdi@ctg.ma', title: 'Events Coordinator', team: 't3', role: 'lead', locale: 'fr', online: false, bio: 'Logistics, venues and volunteers.', skills: ['Logistics', 'Community'], phone: '', muted: []  },
+    { id: 'u5', name: 'Nour Haddad', email: 'nour@ctg.ma', title: 'Communications', team: 't3', role: 'member', locale: 'ar', online: true, bio: 'Social media and press.', skills: ['Copywriting', 'Social'], phone: '', muted: []  },
+    { id: 'u6', name: 'Anas Rahmouni', email: 'anas@ctg.ma', title: 'Developer', team: 't2', role: 'member', locale: 'en', online: false, bio: 'Backend and data.', skills: ['Node', 'Firestore'], phone: '', muted: []  },
   ];
   users.forEach((u) => (u.active = true));
 
@@ -111,11 +111,20 @@
     { id: 'e5', title: 'Release 0.4 to production', description: '', start: D(5, 11), end: D(5, 12), by: 'u2', location: '', color: '#3e6b52', attendees: ['u2', 'u6'], rsvp: {} },
   ];
 
+  const byIdLocal = (list, id) => list.find((x) => x.id === id);
+
   const notifications = [
     { id: 'n1', uid: 'u1', kind: 'taskStatus', title: 'Task updated', body: 'CTG-103 moved to Review', route: { view: 'tasks', task: 'k3' }, read: false, at: ago(240) },
     { id: 'n2', uid: 'u1', kind: 'dueSoon', title: 'Task due soon', body: 'CTG-102 is due within 24 hours: Fix recurring events bug', route: { view: 'tasks', task: 'k2' }, read: false, at: ago(90) },
     { id: 'n3', uid: 'u2', kind: 'mention', title: 'Yasmine Bennani mentioned you', body: 'Can you assign the onboarding tasks to the new members today?', route: { view: 'chat', channel: 'c_dm_1_2' }, read: false, at: ago(45) },
   ];
+
+  // Seeded read receipts, so the chat shows "Seen" and "Seen by N".
+  Object.assign(byIdLocal(channels, 'c_general').read, {
+    u2: ago(5), u3: ago(6), u4: ago(240),
+  });
+  Object.assign(byIdLocal(channels, 'c_dm_1_2').read, { u1: ago(35), u2: ago(30) });
+  Object.assign(byIdLocal(channels, 'c_tech').read, { u6: ago(60) });
 
   window.DB = { users, teams, channels, messages, tasks, events, notifications };
 })();

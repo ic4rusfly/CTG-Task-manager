@@ -153,6 +153,30 @@ async function uploadRun() {
 }
 
 uploadRun().then(() => {
+  // ------------------------------------------------------- mute and seen ----
+  click('.nav-item[data-id="chat"]');
+  click('[data-act="channel"][data-id="c_general"]');
+  doc.getElementById('composer-input').value = 'Agenda for Thursday attached soon.';
+  click('[data-act="send"]');
+  const receipt = doc.querySelector('.messages .msg:last-child .body').textContent;
+  const receiptLabels = Object.values(w.I18N).flatMap((table) => [table.sent, table.seen]);
+  ok(
+    receiptLabels.some((label) => receipt.includes(label)),
+    `the last message I sent carries a read receipt (${receipt.trim().split('\n').pop().trim()})`
+  );
+  click('[data-act="toggle-mute"]');
+  const mutedLabels = Object.values(w.I18N).map((table) => table.muted);
+  ok(
+    mutedLabels.includes(doc.querySelector('.chat-main .sub').textContent.trim()),
+    'muting a conversation is reflected in the header'
+  );
+  ok(
+    !!doc.querySelector('.conv .t svg'),
+    'the conversation list marks the muted conversation'
+  );
+  click('[data-act="toggle-mute"]');
+  ok(!doc.querySelector('.conv .t svg'), 'unmuting clears the marker');
+
   // ----------------------------------------------------------------- push ----
   click('.nav-item[data-id="settings"]');
   const pushToggle = doc.querySelector('[data-act="toggle-push"]');
