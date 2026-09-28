@@ -26,12 +26,24 @@ final userRepositoryProvider = Provider<UserRepository>(
   ),
 );
 
+final notificationRepositoryProvider = Provider<NotificationRepository>(
+  (ref) => MockNotificationRepository(ref.watch(mockDbProvider)),
+);
+
+/// Composes in-app notifications in mock mode; in Firebase mode the Cloud
+/// Functions do this server-side, so the client notifier is skipped.
+final mockNotifierProvider = Provider<MockNotifier?>((ref) {
+  final repo = ref.watch(notificationRepositoryProvider);
+  if (repo is! MockNotificationRepository) return null;
+  return MockNotifier(ref.watch(mockDbProvider), repo);
+});
+
 final chatRepositoryProvider = Provider<ChatRepository>(
-  (ref) => MockChatRepository(ref.watch(mockDbProvider)),
+  (ref) => MockChatRepository(ref.watch(mockDbProvider), ref.watch(mockNotifierProvider)),
 );
 
 final taskRepositoryProvider = Provider<TaskRepository>(
-  (ref) => MockTaskRepository(ref.watch(mockDbProvider)),
+  (ref) => MockTaskRepository(ref.watch(mockDbProvider), ref.watch(mockNotifierProvider)),
 );
 
 final agendaRepositoryProvider = Provider<AgendaRepository>(
@@ -110,6 +122,45 @@ final taskCommentsProvider =
 final eventsProvider = StreamProvider<List<AgendaEvent>>(
   (ref) => ref.watch(agendaRepositoryProvider).watchEvents(),
 );
+
+final notificationsProvider = StreamProvider<List<AppNotification>>((ref) {
+  final uid = ref.watch(currentUserProvider)?.id;
+  if (uid == null) return const Stream.empty();
+  return ref.watch(notificationRepositoryProvider).watch(uid);
+});
+
+final unreadNotificationsProvider = Provider<int>((ref) {
+  final items = ref.watch(notificationsProvider).value ?? const <AppNotification>[];
+  return items.where((n) => !n.read).length;
+});
+
+/// Full-text search across every message the signed-in member can see.
+class MessageHit {
+  const MessageHit(this.message, this.channel);
+
+  final Message message;
+  final Channel channel;
+}
+
+final messageSearchQueryProvider = StateProvider<String>((ref) => '');
+
+final messageSearchProvider = Provider<List<MessageHit>>((ref) {
+  final query = ref.watch(messageSearchQueryProvider).trim().toLowerCase();
+  if (query.length < 2) return const [];
+  final channels = ref.watch(channelsProvider).value ?? const <Channel>[];
+  final hits = <MessageHit>[];
+  for (final channel in channels) {
+    final messages = ref.watch(messagesProvider(channel.id)).value ?? const <Message>[];
+    for (final message in messages) {
+      if (message.deleted) continue;
+      final haystack =
+          '${message.text} ${message.attachments.map((a) => a.name).join(' ')}'.toLowerCase();
+      if (haystack.contains(query)) hits.add(MessageHit(message, channel));
+    }
+  }
+  hits.sort((a, b) => b.message.sentAt.compareTo(a.message.sentAt));
+  return hits;
+});
 
 /// ---------------------------------------------------------------------------
 /// Task filtering (board + list share this state)

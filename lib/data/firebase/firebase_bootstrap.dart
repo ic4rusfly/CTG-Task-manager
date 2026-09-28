@@ -9,6 +9,7 @@ import '../../providers/providers.dart';
 import 'firebase_auth_repository.dart';
 import 'firestore_agenda_repository.dart';
 import 'firestore_chat_repository.dart';
+import 'firestore_notification_repository.dart';
 import 'firestore_task_repository.dart';
 import 'firestore_user_repository.dart';
 
@@ -48,6 +49,9 @@ Future<List<Override>> initializeFirebase() async {
     ),
     agendaRepositoryProvider.overrideWithValue(
       FirestoreAgendaRepository(firestore: firestore),
+    ),
+    notificationRepositoryProvider.overrideWithValue(
+      FirestoreNotificationRepository(firestore: firestore),
     ),
   ];
 }

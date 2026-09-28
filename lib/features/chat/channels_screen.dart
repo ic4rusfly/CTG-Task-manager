@@ -26,6 +26,11 @@ class ChannelsScreen extends ConsumerWidget {
         title: Text(t.chat),
         actions: [
           IconButton(
+            tooltip: t.search,
+            icon: const Icon(Icons.search),
+            onPressed: () => context.go('/search'),
+          ),
+          IconButton(
             tooltip: t.newChannel,
             icon: const Icon(Icons.add_comment_outlined),
             onPressed: () => _showNewConversationSheet(context, ref),

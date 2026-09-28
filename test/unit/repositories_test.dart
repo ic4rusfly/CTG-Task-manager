@@ -112,4 +112,89 @@ void main() {
     await agenda.setRsvp('e1', 'u3', Rsvp.going);
     expect(db.events.firstWhere((e) => e.id == 'e1').rsvp['u3'], Rsvp.going);
   });
+
+  group('notifications', notificationTests);
+}
+
+// ---------------------------------------------------------------------------
+// Notifications: composed in the recipient's language, exactly like the
+// Cloud Functions do in production.
+// ---------------------------------------------------------------------------
+void notificationTests() {
+  late MockDb db;
+  late MockNotificationRepository notifications;
+  late MockNotifier notifier;
+  late MockTaskRepository tasks;
+  late MockChatRepository chat;
+
+  setUp(() {
+    db = MockDb();
+    notifications = MockNotificationRepository(db);
+    notifier = MockNotifier(db, notifications);
+    tasks = MockTaskRepository(db, notifier);
+    chat = MockChatRepository(db, notifier);
+  });
+
+  test('assigning a task notifies every assignee but not the reporter', () async {
+    await tasks.assignToGroup(
+      template: Task(
+        id: '',
+        key: '',
+        title: 'Prepare sponsor emails',
+        reporterId: 'u1',
+        createdAt: DateTime.now(),
+      ),
+      assigneeIds: ['u1', 'u3', 'u5'],
+    );
+
+    expect(db.notifications['u1']?.where((n) => n.kind == NotificationKind.taskAssigned) ?? [],
+        isEmpty);
+    expect(db.notifications['u3'], hasLength(1));
+    expect(db.notifications['u5'], hasLength(1));
+  });
+
+  test('notification copy uses the recipient locale', () async {
+    await tasks.assignToGroup(
+      template: Task(
+        id: '',
+        key: '',
+        title: 'Prepare sponsor emails',
+        reporterId: 'u2',
+        createdAt: DateTime.now(),
+      ),
+      assigneeIds: ['u3', 'u6'], // u3 reads Arabic, u6 reads English
+    );
+
+    expect(db.notifications['u3']!.single.title, contains('أسند'));
+    expect(db.notifications['u6']!.single.title, contains('assigned'));
+  });
+
+  test('mentioning someone in a message notifies them', () async {
+    await chat.sendMessage(Message(
+      id: '',
+      channelId: 'c_general',
+      senderId: 'u1',
+      sentAt: DateTime.now(),
+      text: 'can you look at this @Omar',
+      mentions: const ['u2'],
+    ));
+
+    final item = db.notifications['u2']!.single;
+    expect(item.kind, NotificationKind.mention);
+    expect(item.route, '/chat/c_general');
+  });
+
+  test('markAllRead clears the unread badge', () async {
+    await notifications.add(AppNotification(
+      id: '',
+      uid: 'u2',
+      kind: NotificationKind.message,
+      title: 'x',
+      body: 'y',
+      route: '/chat/c_general',
+      createdAt: DateTime.now(),
+    ));
+    await notifications.markAllRead('u2');
+    expect(db.notifications['u2']!.every((n) => n.read), isTrue);
+  });
 }

@@ -7,7 +7,9 @@ import 'features/agenda/agenda_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/chat/chat_home_screen.dart';
 import 'features/directory/directory_screen.dart';
+import 'features/chat/message_search_screen.dart';
 import 'features/home/home_shell.dart';
+import 'features/notifications/notifications_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/profile/settings_screen.dart';
 import 'features/tasks/task_detail_screen.dart';
@@ -33,6 +35,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(path: '/settings', builder: (context, state) => const SettingsScreen()),
+      GoRoute(path: '/search', builder: (context, state) => const MessageSearchScreen()),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
             HomeShell(navigationShell: navigationShell),
@@ -65,6 +68,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           ]),
           StatefulShellBranch(routes: [
             GoRoute(path: '/agenda', builder: (context, state) => const AgendaScreen()),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+              path: '/notifications',
+              builder: (context, state) => const NotificationsScreen(),
+            ),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(path: '/members', builder: (context, state) => const DirectoryScreen()),

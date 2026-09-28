@@ -18,6 +18,7 @@ class MockDb {
   final List<Task> tasks = [];
   final Map<String, List<TaskComment>> comments = {};
   final List<AgendaEvent> events = [];
+  final Map<String, List<AppNotification>> notifications = {};
 
   final _usersCtrl = StreamController<void>.broadcast();
   final _channelsCtrl = StreamController<void>.broadcast();
@@ -25,6 +26,7 @@ class MockDb {
   final _tasksCtrl = StreamController<void>.broadcast();
   final _commentsCtrl = StreamController<String>.broadcast();
   final _eventsCtrl = StreamController<void>.broadcast();
+  final _notificationsCtrl = StreamController<String>.broadcast();
 
   void pingUsers() => _usersCtrl.add(null);
   void pingChannels() => _channelsCtrl.add(null);
@@ -32,6 +34,7 @@ class MockDb {
   void pingTasks() => _tasksCtrl.add(null);
   void pingComments(String taskId) => _commentsCtrl.add(taskId);
   void pingEvents() => _eventsCtrl.add(null);
+  void pingNotifications(String uid) => _notificationsCtrl.add(uid);
 
   Stream<T> _watch<T, E>(Stream<E> trigger, T Function() read,
       {bool Function(E)? where}) async* {
@@ -59,6 +62,13 @@ class MockDb {
         () => List.unmodifiable(comments[taskId] ?? const <TaskComment>[]),
         where: (id) => id == taskId,
       );
+  Stream<List<AppNotification>> watchNotifications(String uid) =>
+      _watch<List<AppNotification>, String>(
+        _notificationsCtrl.stream,
+        () => List.unmodifiable(notifications[uid] ?? const <AppNotification>[]),
+        where: (id) => id == uid,
+      );
+
   Stream<List<AgendaEvent>> watchEvents() =>
       _watch<List<AgendaEvent>, void>(_eventsCtrl.stream, () => List.unmodifiable(events));
 
@@ -396,6 +406,27 @@ class MockDb {
         authorId: 'u1',
         text: 'Thanks — let us lock the schedule before Thursday.',
         createdAt: now.subtract(const Duration(hours: 18)),
+      ),
+    ];
+
+    notifications['u1'] = [
+      AppNotification(
+        id: 'n1',
+        uid: 'u1',
+        kind: NotificationKind.taskStatus,
+        title: 'Task updated',
+        body: 'CTG-103 moved to Review',
+        route: '/tasks/k3',
+        createdAt: now.subtract(const Duration(hours: 4)),
+      ),
+      AppNotification(
+        id: 'n2',
+        uid: 'u1',
+        kind: NotificationKind.dueSoon,
+        title: 'Task due soon',
+        body: 'CTG-102 is due within 24 hours: Fix recurring events bug',
+        route: '/tasks/k2',
+        createdAt: now.subtract(const Duration(minutes: 90)),
       ),
     ];
 

@@ -18,7 +18,7 @@ Built with **Flutter + Riverpod + go_router**, backed by **Firebase** (phase 1).
 | `firebase/` | Firestore rules + indexes, Storage rules, `firebase.json` |
 | `firebase/functions/` | Cloud Functions (TypeScript): notifications in each recipient's language, group assignment, onboarding, due-soon cron |
 | `firebase/seed/` | One-shot script that seeds a fresh project with members, teams, `#general` and the CTG project |
-| `test/` | Unit tests (models, mock repositories, localisation) and widget tests (task card, RTL, French) |
+| `test/` | Unit tests (models, mock repositories, mentions, localisation) and widget tests (task card, RTL, French) |
 | `.github/workflows/ci.yml` | CI: translation + no-emoji checks, `flutter analyze`, `flutter test`, web build, Functions type-check |
 | `prototype/` | A dependency-free clickable HTML prototype of the same UI (see below) |
 | `tool/` | `gen_l10n.py` (ARB → Dart strings) and `gen_prototype_i18n.py` (ARB → prototype) |
@@ -49,7 +49,7 @@ flutter run --dart-define=BACKEND=firebase --dart-define=USE_EMULATOR=true
 ```
 
 `lib/core/env.dart` holds the switch; `lib/data/firebase/firebase_bootstrap.dart` starts Firebase,
-turns on the offline cache and returns the five provider overrides that replace the mock
+turns on the offline cache and returns the six provider overrides that replace the mock
 repositories. No screen, model or provider changes between the two modes.
 
 Requires Flutter 3.24 or newer. Sign in with any seeded member (for example `yasmine@ctg.ma`,
@@ -69,11 +69,24 @@ python3 -m http.server 3000 --directory prototype
 
 It mirrors the Flutter UI screen for screen and reads the **same translation files**
 (`prototype/i18n.js` is generated from `lib/l10n/*.arb`), so it is safe to use for stakeholder
-reviews. You can: chat and attach media, drag task cards across the board, open a task and move
+reviews. You can: chat and attach media, mention a teammate with `@`, search every message you
+can see, read the notification centre, drag task cards across the board, open a task and move
 its progress, assign a task to a group (shared or one-per-person), browse the agenda and RSVP,
 manage members as admin, and switch language (including RTL Arabic) and theme.
 
 ---
+
+## Mentions, search and notifications
+
+- Typing `@Firstname` (or `@email-handle`) in the composer mentions a member: the token is
+  highlighted in the bubble and the person gets a notification. `lib/core/mentions.dart` does the
+  resolution and is unicode-aware, so Arabic and French names match too.
+- The search icon on the conversation list opens a full-text search across every channel and DM
+  the signed-in member belongs to (client-side over the streamed messages; a Firestore or Algolia
+  index is the phase-2 upgrade).
+- The bell tab is the notification centre. Every notification is composed **in the recipient's
+  language** — by the Cloud Functions in production, by `MockNotifier` in mock mode — and stores
+  a route so tapping it jumps straight to the message or task.
 
 ## Design rules
 
@@ -108,6 +121,9 @@ copy built in each recipient's `locale`), `onTaskWrite` (assignment + status not
 an activity trail), `dueSoonScheduler` (hourly, 24h horizon), `onEventCreate` (invites),
 `assignTaskGroup` (transactional group assignment with sequential `CTG-###` keys),
 `registerDevice`.
+
+In-app notifications are written to `notifications/{uid}/items` by the same Functions and read by
+`FirestoreNotificationRepository`; the mock backend mirrors the exact same shape.
 
 ## Tests
 

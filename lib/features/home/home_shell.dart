@@ -23,6 +23,8 @@ class HomeShell extends ConsumerWidget {
       _Destination(t.chat, Icons.forum_outlined, Icons.forum),
       _Destination(t.tasks, Icons.task_alt_outlined, Icons.task_alt),
       _Destination(t.agenda, Icons.calendar_month_outlined, Icons.calendar_month),
+      _Destination(t.notificationCenter, Icons.notifications_none, Icons.notifications,
+          badge: ref.watch(unreadNotificationsProvider)),
       _Destination(t.members, Icons.people_outline, Icons.people),
       _Destination(t.profile, Icons.person_outline, Icons.person),
       if (showAdmin)
@@ -43,7 +45,9 @@ class HomeShell extends ConsumerWidget {
           destinations: [
             for (final d in destinations)
               NavigationDestination(
-                icon: Icon(d.icon),
+                icon: d.badge > 0
+                    ? Badge.count(count: d.badge, child: Icon(d.icon))
+                    : Icon(d.icon),
                 selectedIcon: Icon(d.selectedIcon),
                 label: d.label,
               ),
@@ -96,7 +100,9 @@ class HomeShell extends ConsumerWidget {
             destinations: [
               for (final d in destinations)
                 NavigationRailDestination(
-                  icon: Icon(d.icon),
+                  icon: d.badge > 0
+                      ? Badge.count(count: d.badge, child: Icon(d.icon))
+                      : Icon(d.icon),
                   selectedIcon: Icon(d.selectedIcon),
                   label: Text(d.label),
                 ),
@@ -111,9 +117,10 @@ class HomeShell extends ConsumerWidget {
 }
 
 class _Destination {
-  const _Destination(this.label, this.icon, this.selectedIcon);
+  const _Destination(this.label, this.icon, this.selectedIcon, {this.badge = 0});
 
   final String label;
   final IconData icon;
   final IconData selectedIcon;
+  final int badge;
 }

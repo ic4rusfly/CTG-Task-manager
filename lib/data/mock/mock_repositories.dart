@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../../l10n/app_localizations.dart';
 import '../../domain/models/models.dart';
 import '../../domain/repositories/repositories.dart';
 import 'mock_db.dart';
@@ -107,9 +108,10 @@ extension<T> on Iterable<T> {
 }
 
 class MockChatRepository implements ChatRepository {
-  MockChatRepository(this._db);
+  MockChatRepository(this._db, [this._notifier]);
 
   final MockDb _db;
+  final MockNotifier? _notifier;
 
   @override
   Stream<List<Channel>> watchChannels(String uid) => _db.watchChannels().map((all) {
@@ -154,6 +156,15 @@ class MockChatRepository implements ChatRepository {
     }
     _db.pingMessages(msg.channelId);
     _db.pingChannels();
+
+    if (msg.mentions.isNotEmpty) {
+      await _notifier?.mention(
+        recipientIds: msg.mentions,
+        actorId: msg.senderId,
+        channelId: msg.channelId,
+        text: msg.text,
+      );
+    }
   }
 
   @override
@@ -233,9 +244,10 @@ class MockChatRepository implements ChatRepository {
 }
 
 class MockTaskRepository implements TaskRepository {
-  MockTaskRepository(this._db);
+  MockTaskRepository(this._db, [this._notifier]);
 
   final MockDb _db;
+  final MockNotifier? _notifier;
 
   int _nextKeyNumber() {
     final numbers = _db.tasks
@@ -277,6 +289,11 @@ class MockTaskRepository implements TaskRepository {
     );
     _db.tasks.add(created);
     _db.pingTasks();
+    await _notifier?.taskAssigned(
+      recipientIds: created.assigneeIds,
+      actorId: created.reporterId,
+      task: created,
+    );
     return created;
   }
 
@@ -452,5 +469,112 @@ class MockAgendaRepository implements AgendaRepository {
   Future<void> deleteEvent(String eventId) async {
     _db.events.removeWhere((e) => e.id == eventId);
     _db.pingEvents();
+  }
+}
+
+
+class MockNotificationRepository implements NotificationRepository {
+  MockNotificationRepository(this._db);
+
+  final MockDb _db;
+
+  @override
+  Stream<List<AppNotification>> watch(String uid) => _db.watchNotifications(uid).map(
+        (list) => [...list]..sort((a, b) => b.createdAt.compareTo(a.createdAt)),
+      );
+
+  @override
+  Future<void> add(AppNotification notification) async {
+    _db.notifications.putIfAbsent(notification.uid, () => []).add(
+          AppNotification(
+            id: notification.id.isEmpty ? _id('n') : notification.id,
+            uid: notification.uid,
+            kind: notification.kind,
+            title: notification.title,
+            body: notification.body,
+            route: notification.route,
+            createdAt: notification.createdAt,
+          ),
+        );
+    _db.pingNotifications(notification.uid);
+  }
+
+  @override
+  Future<void> markRead(String uid, String id) async {
+    final list = _db.notifications[uid];
+    if (list == null) return;
+    final i = list.indexWhere((n) => n.id == id);
+    if (i == -1) return;
+    list[i] = list[i].copyWith(read: true);
+    _db.pingNotifications(uid);
+  }
+
+  @override
+  Future<void> markAllRead(String uid) async {
+    final list = _db.notifications[uid];
+    if (list == null) return;
+    for (var i = 0; i < list.length; i++) {
+      list[i] = list[i].copyWith(read: true);
+    }
+    _db.pingNotifications(uid);
+  }
+}
+
+/// Composes notifications the same way the Cloud Functions do: always in the
+/// *recipient's* language, never the sender's.
+class MockNotifier {
+  MockNotifier(this._db, this._repo);
+
+  final MockDb _db;
+  final NotificationRepository _repo;
+
+  AppUser? _user(String uid) {
+    for (final u in _db.users) {
+      if (u.id == uid) return u;
+    }
+    return null;
+  }
+
+  AppLocalizations _l10n(String uid) => AppLocalizations(_user(uid)?.locale ?? 'en');
+
+  Future<void> mention({
+    required List<String> recipientIds,
+    required String actorId,
+    required String channelId,
+    required String text,
+  }) async {
+    final actor = _user(actorId)?.displayName ?? '';
+    for (final uid in recipientIds.where((id) => id != actorId)) {
+      final t = _l10n(uid);
+      await _repo.add(AppNotification(
+        id: '',
+        uid: uid,
+        kind: NotificationKind.mention,
+        title: t.mentionedYou(actor),
+        body: text,
+        route: '/chat/$channelId',
+        createdAt: DateTime.now(),
+      ));
+    }
+  }
+
+  Future<void> taskAssigned({
+    required List<String> recipientIds,
+    required String actorId,
+    required Task task,
+  }) async {
+    final actor = _user(actorId)?.displayName ?? '';
+    for (final uid in recipientIds.where((id) => id != actorId)) {
+      final t = _l10n(uid);
+      await _repo.add(AppNotification(
+        id: '',
+        uid: uid,
+        kind: NotificationKind.taskAssigned,
+        title: t.assignedYouTask(actor, task.key),
+        body: task.title,
+        route: '/tasks/${task.id}',
+        createdAt: DateTime.now(),
+      ));
+    }
   }
 }

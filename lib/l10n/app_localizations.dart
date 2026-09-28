@@ -159,6 +159,14 @@ class AppLocalizations {
   String get reactionWatching => _get('reactionWatching');
   String get reactionBlocker => _get('reactionBlocker');
   String get reactionDone => _get('reactionDone');
+  String get search => _get('search');
+  String get searchMessages => _get('searchMessages');
+  String get noResults => _get('noResults');
+  String get notificationCenter => _get('notificationCenter');
+  String get markAllRead => _get('markAllRead');
+  String get noNotifications => _get('noNotifications');
+  String get mentionSomeone => _get('mentionSomeone');
+  String get openConversation => _get('openConversation');
 
   String minutesAgo(int count) {
     var s = _get('minutesAgo');
@@ -186,6 +194,24 @@ class AppLocalizations {
     s = s.replaceAll('{name}', '$name');
     return s;
   }
+  String unreadCount(int count) => _plural('unreadCount', count);
+  String mentionedYou(Object name) {
+    var s = _get('mentionedYou');
+    s = s.replaceAll('{name}', '$name');
+    return s;
+  }
+  String assignedYouTask(Object name, Object key) {
+    var s = _get('assignedYouTask');
+    s = s.replaceAll('{name}', '$name');
+    s = s.replaceAll('{key}', '$key');
+    return s;
+  }
+  String inChannel(Object channel) {
+    var s = _get('inChannel');
+    s = s.replaceAll('{channel}', '$channel');
+    return s;
+  }
+  String resultsCount(int count) => _plural('resultsCount', count);
 
   /// Minimal ICU plural support for the few plural keys we use.
   String _plural(String key, int count) {
@@ -374,6 +400,19 @@ const _strings = <String, Map<String, String>>{
     'reactionWatching': 'Watching',
     'reactionBlocker': 'Blocker',
     'reactionDone': 'Done',
+    'search': 'Search',
+    'searchMessages': 'Search messages…',
+    'noResults': 'No results',
+    'notificationCenter': 'Notifications',
+    'markAllRead': 'Mark all as read',
+    'noNotifications': 'You are all caught up',
+    'unreadCount': '{count, plural, =0{No unread} =1{1 unread} other{{count} unread}}',
+    'mentionSomeone': 'Mention someone',
+    'mentionedYou': '{name} mentioned you',
+    'assignedYouTask': '{name} assigned you {key}',
+    'inChannel': 'in {channel}',
+    'resultsCount': '{count, plural, =0{No messages} =1{1 message} other{{count} messages}}',
+    'openConversation': 'Open conversation',
   },
   'fr': <String, String>{
     'appName': 'CTG Hub',
@@ -514,6 +553,19 @@ const _strings = <String, Map<String, String>>{
     'reactionWatching': 'Je suis',
     'reactionBlocker': 'Bloquant',
     'reactionDone': 'Terminé',
+    'search': 'Rechercher',
+    'searchMessages': 'Rechercher des messages…',
+    'noResults': 'Aucun résultat',
+    'notificationCenter': 'Notifications',
+    'markAllRead': 'Tout marquer comme lu',
+    'noNotifications': 'Vous êtes à jour',
+    'unreadCount': '{count, plural, =0{Aucun non lu} =1{1 non lu} other{{count} non lus}}',
+    'mentionSomeone': 'Mentionner quelqu’un',
+    'mentionedYou': '{name} vous a mentionné',
+    'assignedYouTask': '{name} vous a assigné {key}',
+    'inChannel': 'dans {channel}',
+    'resultsCount': '{count, plural, =0{Aucun message} =1{1 message} other{{count} messages}}',
+    'openConversation': 'Ouvrir la conversation',
   },
   'ar': <String, String>{
     'appName': 'مركز CTG',
@@ -654,5 +706,18 @@ const _strings = <String, Map<String, String>>{
     'reactionWatching': 'أتابع',
     'reactionBlocker': 'معيق',
     'reactionDone': 'منجز',
+    'search': 'بحث',
+    'searchMessages': 'ابحث في الرسائل…',
+    'noResults': 'لا توجد نتائج',
+    'notificationCenter': 'الإشعارات',
+    'markAllRead': 'تعليم الكل كمقروء',
+    'noNotifications': 'لا جديد لديك',
+    'unreadCount': '{count, plural, =0{لا رسائل غير مقروءة} =1{رسالة واحدة غير مقروءة} =2{رسالتان غير مقروءتين} few{{count} رسائل غير مقروءة} other{{count} رسالة غير مقروءة}}',
+    'mentionSomeone': 'أشر إلى شخص',
+    'mentionedYou': 'أشار إليك {name}',
+    'assignedYouTask': 'أسند إليك {name} المهمة {key}',
+    'inChannel': 'في {channel}',
+    'resultsCount': '{count, plural, =0{لا رسائل} =1{رسالة واحدة} =2{رسالتان} few{{count} رسائل} other{{count} رسالة}}',
+    'openConversation': 'فتح المحادثة',
   },
 };

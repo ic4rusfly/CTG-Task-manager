@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/formatters.dart';
 import '../../core/labels.dart';
+import '../../core/mentions.dart';
 import '../../core/theme.dart';
 import '../../domain/models/models.dart';
 import '../../providers/providers.dart';
@@ -59,6 +60,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final me = ref.read(currentUserProvider);
     final body = (text ?? _controller.text).trim();
     if (me == null) return;
+    final mentions = parseMentions(body, ref.read(usersProvider).value ?? const []);
     if (body.isEmpty && attachments.isEmpty && taskId == null && linkUrl == null) return;
     _controller.clear();
     await ref.read(chatRepositoryProvider).sendMessage(
@@ -72,6 +74,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             attachments: attachments,
             taskId: taskId,
             linkUrl: linkUrl,
+            mentions: mentions,
           ),
         );
     await Future<void>.delayed(const Duration(milliseconds: 50));
@@ -178,10 +181,56 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             controller: _controller,
             onSend: () => _send(),
             onAttach: (type) => _attach(type),
+            onMention: _pickMention,
           ),
         ],
       ),
     );
+  }
+
+  /// Inserts "@Name" at the caret; [parseMentions] turns it into a real
+  /// mention (and a notification) when the message is sent.
+  Future<void> _pickMention() async {
+    final me = ref.read(currentUserProvider);
+    final channels = ref.read(channelsProvider).value ?? const <Channel>[];
+    final channel = channels.where((c) => c.id == widget.channelId).firstOrNull;
+    final usersById = ref.read(usersByIdProvider);
+    final candidates = (channel?.memberIds ?? const <String>[])
+        .where((id) => id != me?.id)
+        .map((id) => usersById[id])
+        .whereType<AppUser>()
+        .toList();
+    if (candidates.isEmpty) return;
+
+    final picked = await showModalBottomSheet<AppUser>(
+      context: context,
+      showDragHandle: true,
+      builder: (_) => ListView(
+        shrinkWrap: true,
+        children: [
+          for (final u in candidates)
+            ListTile(
+              leading: UserAvatar(user: u, size: 34, showPresence: true),
+              title: Text(u.displayName),
+              subtitle: Text(u.title),
+              onTap: () => Navigator.of(context).pop(u),
+            ),
+        ],
+      ),
+    );
+    if (picked == null) return;
+
+    final handle = picked.displayName.split(' ').first;
+    final text = _controller.text;
+    final selection = _controller.selection;
+    final at = selection.isValid ? selection.start : text.length;
+    final prefix = text.substring(0, at);
+    final suffix = text.substring(at);
+    final needsSpace = prefix.isNotEmpty && !prefix.endsWith(' ');
+    final insert = '${needsSpace ? ' ' : ''}@$handle ';
+    _controller.text = '$prefix$insert$suffix';
+    _controller.selection =
+        TextSelection.collapsed(offset: (prefix + insert).length);
   }
 
   Future<void> _attach(MessageType type) async {
@@ -365,7 +414,10 @@ class MessageBubble extends ConsumerWidget {
                           message.type != MessageType.link)
                         Padding(
                           padding: const EdgeInsets.only(top: 2),
-                          child: Text(message.text),
+                          child: _MessageText(
+                            text: message.text,
+                            highlightForMe: message.mentions.contains(me?.id),
+                          ),
                         ),
                     ],
                     const SizedBox(height: 4),
@@ -589,11 +641,17 @@ class _MessageBody extends ConsumerWidget {
 }
 
 class _Composer extends StatelessWidget {
-  const _Composer({required this.controller, required this.onSend, required this.onAttach});
+  const _Composer({
+    required this.controller,
+    required this.onSend,
+    required this.onAttach,
+    required this.onMention,
+  });
 
   final TextEditingController controller;
   final VoidCallback onSend;
   final ValueChanged<MessageType> onAttach;
+  final VoidCallback onMention;
 
   @override
   Widget build(BuildContext context) {
@@ -641,6 +699,11 @@ class _Composer extends StatelessWidget {
                 ),
               ],
             ),
+            IconButton(
+              tooltip: t.mentionSomeone,
+              icon: const Icon(Icons.alternate_email),
+              onPressed: onMention,
+            ),
             Expanded(
               child: TextField(
                 controller: controller,
@@ -660,6 +723,50 @@ class _Composer extends StatelessWidget {
               icon: const Icon(Icons.send),
               tooltip: t.send,
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+/// Renders message text with "@mentions" highlighted, and tints the whole line
+/// when the signed-in member is the one being mentioned.
+class _MessageText extends ConsumerWidget {
+  const _MessageText({required this.text, this.highlightForMe = false});
+
+  final String text;
+  final bool highlightForMe;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final users = ref.watch(usersProvider).value ?? const <AppUser>[];
+    final scheme = Theme.of(context).colorScheme;
+    final segments = splitMentions(text, users);
+    if (segments.length == 1 && !segments.first.isMention) return Text(text);
+
+    return Container(
+      padding: highlightForMe
+          ? const EdgeInsets.symmetric(horizontal: 6, vertical: 3)
+          : EdgeInsets.zero,
+      decoration: highlightForMe
+          ? BoxDecoration(
+              color: scheme.primary.withOpacity(.10),
+              borderRadius: BorderRadius.circular(6),
+            )
+          : null,
+      child: RichText(
+        text: TextSpan(
+          style: DefaultTextStyle.of(context).style,
+          children: [
+            for (final segment in segments)
+              TextSpan(
+                text: segment.text,
+                style: segment.isMention
+                    ? TextStyle(color: scheme.primary, fontWeight: FontWeight.w700)
+                    : null,
+              ),
           ],
         ),
       ),

@@ -179,5 +179,18 @@
   "reactionAgree": "أوافق",
   "reactionWatching": "أتابع",
   "reactionBlocker": "معيق",
-  "reactionDone": "منجز"
+  "reactionDone": "منجز",
+  "search": "بحث",
+  "searchMessages": "ابحث في الرسائل…",
+  "noResults": "لا توجد نتائج",
+  "notificationCenter": "الإشعارات",
+  "markAllRead": "تعليم الكل كمقروء",
+  "noNotifications": "لا جديد لديك",
+  "unreadCount": "{count, plural, =0{لا رسائل غير مقروءة} =1{رسالة واحدة غير مقروءة} =2{رسالتان غير مقروءتين} few{{count} رسائل غير مقروءة} other{{count} رسالة غير مقروءة}}",
+  "mentionSomeone": "أشر إلى شخص",
+  "mentionedYou": "أشار إليك {name}",
+  "assignedYouTask": "أسند إليك {name} المهمة {key}",
+  "inChannel": "في {channel}",
+  "resultsCount": "{count, plural, =0{لا رسائل} =1{رسالة واحدة} =2{رسالتان} few{{count} رسائل} other{{count} رسالة}}",
+  "openConversation": "فتح المحادثة"
 }

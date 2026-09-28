@@ -4,5 +4,6 @@ export 'channel.dart';
 export 'enums.dart';
 export 'event.dart';
 export 'message.dart';
+export 'notification.dart';
 export 'task.dart';
 export 'team.dart';

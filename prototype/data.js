@@ -109,5 +109,11 @@
     { id: 'e5', title: 'Release 0.4 to production', description: '', start: D(5, 11), end: D(5, 12), by: 'u2', location: '', color: '#3e6b52', attendees: ['u2', 'u6'], rsvp: {} },
   ];
 
-  window.DB = { users, teams, channels, messages, tasks, events };
+  const notifications = [
+    { id: 'n1', uid: 'u1', kind: 'taskStatus', title: 'Task updated', body: 'CTG-103 moved to Review', route: { view: 'tasks', task: 'k3' }, read: false, at: ago(240) },
+    { id: 'n2', uid: 'u1', kind: 'dueSoon', title: 'Task due soon', body: 'CTG-102 is due within 24 hours: Fix recurring events bug', route: { view: 'tasks', task: 'k2' }, read: false, at: ago(90) },
+    { id: 'n3', uid: 'u2', kind: 'mention', title: 'Yasmine Bennani mentioned you', body: 'Can you assign the onboarding tasks to the new members today?', route: { view: 'chat', channel: 'c_dm_1_2' }, read: false, at: ago(45) },
+  ];
+
+  window.DB = { users, teams, channels, messages, tasks, events, notifications };
 })();

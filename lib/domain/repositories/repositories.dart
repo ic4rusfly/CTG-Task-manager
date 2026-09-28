@@ -62,3 +62,10 @@ abstract class AgendaRepository {
   Future<void> setRsvp(String eventId, String uid, Rsvp rsvp);
   Future<void> deleteEvent(String eventId);
 }
+
+abstract class NotificationRepository {
+  Stream<List<AppNotification>> watch(String uid);
+  Future<void> add(AppNotification notification);
+  Future<void> markRead(String uid, String id);
+  Future<void> markAllRead(String uid);
+}

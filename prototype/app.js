@@ -21,6 +21,7 @@ const state = {
   day: new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()),
   month: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
   modal: null,
+  search: '',
 };
 
 function t(key, params) {
@@ -124,6 +125,11 @@ const ICONS = {
   message: svg('<path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.1A8.4 8.4 0 1 1 21 11.5z"/>'),
   assign: svg('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/>'),
   back: svg('<path d="M19 12H5M12 19l-7-7 7-7"/>'),
+  bell: svg('<path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>'),
+  at: svg('<circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/>'),
+  clock: svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+  swap: svg('<path d="M17 2l4 4-4 4"/><path d="M3 6h18M7 22l-4-4 4-4"/><path d="M21 18H3"/>'),
+  checkAll: svg('<path d="M1 12l5 5L17 6"/><path d="M12 17l1 1L23 7"/>'),
 };
 
 // ------------------------------------------------------------- data access
@@ -161,6 +167,48 @@ const effectiveProgress = (task) => {
 const isOverdue = (task) => task.status !== 'done' && task.due && task.due < new Date();
 const canAssign = () => ['admin', 'lead'].includes(me().role);
 
+const MENTION_RE = /@([\p{L}\p{N}._-]+)/gu;
+
+/** Resolves "@name" tokens to member ids (first name or email handle). */
+function parseMentions(text) {
+  const ids = new Set();
+  for (const match of text.matchAll(MENTION_RE)) {
+    const token = match[1].toLowerCase();
+    const user = DB.users.find(
+      (u) => u.name.split(' ')[0].toLowerCase() === token || u.email.split('@')[0].toLowerCase() === token
+    );
+    if (user) ids.add(user.id);
+  }
+  return [...ids];
+}
+
+/** Escapes text and wraps recognised mentions in a highlight span. */
+function withMentions(text) {
+  let out = '';
+  let cursor = 0;
+  for (const match of text.matchAll(MENTION_RE)) {
+    const token = match[1].toLowerCase();
+    const user = DB.users.find(
+      (u) => u.name.split(' ')[0].toLowerCase() === token || u.email.split('@')[0].toLowerCase() === token
+    );
+    if (!user) continue;
+    out += esc(text.slice(cursor, match.index));
+    out += `<b style="color:var(--accent)">${esc(match[0])}</b>`;
+    cursor = match.index + match[0].length;
+  }
+  out += esc(text.slice(cursor));
+  return out;
+}
+
+const myNotifications = () =>
+  DB.notifications.filter((n) => n.uid === state.me).sort((a, b) => b.at - a.at);
+const unreadNotifications = () => myNotifications().filter((n) => !n.read).length;
+
+function notify(uid, kind, title, body, route) {
+  if (uid === state.me) return;
+  DB.notifications.push({ id: uid + Date.now() + Math.random(), uid, kind, title, body, route, read: false, at: new Date() });
+}
+
 // ------------------------------------------------------------ small pieces
 function avatar(id, cls = '', presence = false) {
   const u = byId(DB.users, id);
@@ -191,7 +239,8 @@ function render() {
   document.documentElement.dataset.theme = state.theme;
 
   const nav = [
-    ['chat', 'chat'], ['tasks', 'tasks'], ['agenda', 'agenda'], ['members', 'members'],
+    ['chat', 'chat'], ['tasks', 'tasks'], ['agenda', 'agenda'],
+    ['notifications', 'bell'], ['members', 'members'],
   ];
   if (canAssign()) nav.push(['admin', 'admin']);
   nav.push(['settings', 'settings']);
@@ -207,8 +256,9 @@ function render() {
       </div>
       ${nav.map(([id, icon]) => `
         <button class="nav-item ${state.view === id ? 'active' : ''}" data-act="view" data-id="${id}">
-          ${ICONS[icon]}<span class="label">${esc(t(id))}</span>
+          ${ICONS[icon]}<span class="label">${esc(id === 'notifications' ? t('notificationCenter') : t(id))}</span>
           ${id === 'chat' && totalUnread ? `<span class="badge">${totalUnread}</span>` : ''}
+          ${id === 'notifications' && unreadNotifications() ? `<span class="badge">${unreadNotifications()}</span>` : ''}
         </button>`).join('')}
       <div class="spacer"></div>
       <button class="me-card" data-act="switch-user">
@@ -231,6 +281,7 @@ function topbar() {
   const titles = {
     chat: t('chat'), tasks: t('tasks'), agenda: t('agenda'),
     members: t('members'), admin: t('admin'), settings: t('settings'),
+    notifications: t('notificationCenter'),
   };
   return `
     <header class="topbar">
@@ -256,6 +307,7 @@ function viewHtml() {
     case 'chat': return chatView();
     case 'tasks': return tasksView();
     case 'agenda': return agendaView();
+    case 'notifications': return notificationsView();
     case 'members': return membersView();
     case 'admin': return adminView();
     default: return settingsView();
@@ -290,6 +342,10 @@ function chatView() {
   return `
     <div class="chat-wrap">
       <div class="chat-list">
+        <div style="padding:10px 10px 2px">
+          <input type="search" id="msg-search" placeholder="${esc(t('searchMessages'))}" value="${esc(state.search)}">
+        </div>
+        ${state.search.trim().length > 1 ? searchResults() : ''}
         <div class="section-title">${esc(t('channels'))}</div>
         ${rooms.map(conv).join('')}
         <div class="section-title">${esc(t('directMessages'))}</div>
@@ -299,6 +355,29 @@ function chatView() {
         ${current ? chatMain(current) : `<div class="empty">${esc(t('channels'))}</div>`}
       </div>
     </div>`;
+}
+
+function searchResults() {
+  const q = state.search.trim().toLowerCase();
+  const mine = myChannels().map((c) => c.id);
+  const hits = DB.messages
+    .filter((m) => mine.includes(m.ch))
+    .filter((m) => ((m.text || '') + ' ' + (m.att ? m.att.name : '')).toLowerCase().includes(q))
+    .sort((a, b) => b.at - a.at);
+
+  return `
+    <div class="section-title">${esc(t('resultsCount', { count: hits.length }))}</div>
+    ${hits.length ? hits.map((m) => {
+      const c = byId(DB.channels, m.ch);
+      return `<button class="conv" data-act="open-hit" data-id="${m.id}">
+        ${avatar(m.from, 'sm')}
+        <span class="grow">
+          <div class="t">${esc(userName(m.from))} <span class="muted small">${esc(t('inChannel', { channel: channelTitle(c) }))}</span></div>
+          <div class="p">${esc(m.text || (m.att ? m.att.name : ''))}</div>
+        </span>
+        <span class="meta">${esc(relative(m.at))}</span>
+      </button>`;
+    }).join('') : `<div class="small muted" style="padding:6px 12px">${esc(t('noResults'))}</div>`}`;
 }
 
 function chatMain(c) {
@@ -332,6 +411,7 @@ function chatMain(c) {
         <button class="btn small ghost" data-act="attach" data-id="audio">${ICONS.audio}${esc(t('attachAudio'))}</button>
         <button class="btn small ghost" data-act="attach" data-id="link">${ICONS.link}${esc(t('attachLink'))}</button>
         <button class="btn small ghost" data-act="attach" data-id="taskRef">${ICONS.taskref}${esc(t('linkTask'))}</button>
+        <button class="btn small ghost" data-act="mention">${ICONS.at}${esc(t('mentionSomeone'))}</button>
       </div>
       <div class="line">
         <input type="text" id="composer-input" placeholder="${esc(t('messageHint'))}" autocomplete="off">
@@ -364,7 +444,11 @@ function messageHtml(m) {
       ${progressBar(effectiveProgress(task))}
       <div class="small muted" style="margin-top:5px">${effectiveProgress(task)}%</div></div>` : '';
   }
-  const text = m.text && m.type !== 'link' ? `<div style="margin-top:${body ? '6px' : '0'}">${esc(m.text)}</div>` : '';
+  const mentionsMe = (parseMentions(m.text || '')).includes(state.me);
+  const text = m.text && m.type !== 'link'
+    ? `<div style="margin-top:${body ? '6px' : '0'};${mentionsMe
+        ? 'background:var(--surface-2);border-radius:6px;padding:3px 6px' : ''}">${withMentions(m.text)}</div>`
+    : '';
 
   const reactions = Object.keys(m.reactions || {}).map((code) => {
     const on = m.reactions[code].includes(state.me);
@@ -574,6 +658,36 @@ function agendaView() {
           ${ICONS.tasks}<span class="grow">${esc(task.key)} - ${esc(task.title)}</span>
           ${chip(t('dueDate'))}
         </div>`).join('')}
+    </div>`;
+}
+
+// ----------------------------------------------------------- notifications
+const NOTIF_ICON = { mention: 'at', message: 'chat', taskAssigned: 'assign', taskStatus: 'swap', dueSoon: 'clock', eventInvite: 'agenda' };
+const NOTIF_COLOR = { mention: 'var(--chocolate)', taskAssigned: 'var(--green)', dueSoon: 'var(--maroon)' };
+
+function notificationsView() {
+  const items = myNotifications();
+  const unread = unreadNotifications();
+  return `
+    <div class="pad" style="max-width:760px">
+      <div class="row" style="margin-bottom:12px">
+        <span class="small muted">${esc(t('unreadCount', { count: unread }))}</span>
+        <div class="grow"></div>
+        ${unread ? `<button class="btn small" data-act="read-all">${ICONS.checkAll}${esc(t('markAllRead'))}</button>` : ''}
+      </div>
+      ${items.length ? items.map((n) => {
+        const color = NOTIF_COLOR[n.kind] || 'var(--grey)';
+        return `<div class="card row" style="align-items:flex-start;margin-bottom:9px;cursor:pointer;
+            ${n.read ? '' : `border-color:${color}`}" data-act="open-notif" data-id="${n.id}">
+          <span style="width:32px;height:32px;border-radius:8px;display:grid;place-items:center;
+            color:${color};background:var(--surface-2);flex:none">${ICONS[NOTIF_ICON[n.kind]] || ICONS.bell}</span>
+          <span class="grow">
+            <div style="font-weight:${n.read ? 500 : 700}">${esc(n.title)}</div>
+            <div class="small muted">${esc(n.body)}</div>
+          </span>
+          <span class="small muted">${esc(relative(n.at))}</span>
+        </div>`;
+      }).join('') : `<div class="empty">${esc(t('noNotifications'))}</div>`}
     </div>`;
 }
 
@@ -812,6 +926,13 @@ function sendMessage(type, payload) {
     id: uid('m'), ch: state.channel, from: state.me, at: new Date(),
     type: type || 'text', text, reactions: {}, ...(payload || {}),
   });
+  // Mentions notify the people named, in their own language (like the
+  // Cloud Functions do in production).
+  for (const target of parseMentions(text || '')) {
+    const lang = byId(DB.users, target).locale;
+    const copy = (window.I18N[lang] || window.I18N.en).mentionedYou.split('{name}').join(userName(state.me));
+    notify(target, 'mention', copy, text, { view: 'chat', channel: state.channel });
+  }
   render();
   const box = document.getElementById('messages');
   if (box) box.scrollTop = box.scrollHeight;
@@ -973,6 +1094,38 @@ function handle(act, el) {
       state.modal = null;
       break;
     }
+    case 'read-all':
+      DB.notifications.filter((n) => n.uid === state.me).forEach((n) => { n.read = true; });
+      break;
+    case 'open-notif': {
+      const n = DB.notifications.find((x) => x.id === id);
+      if (!n) return;
+      n.read = true;
+      state.view = n.route.view;
+      if (n.route.channel) state.channel = n.route.channel;
+      if (n.route.task) state.taskOpen = n.route.task;
+      break;
+    }
+    case 'open-hit': {
+      const m = byId(DB.messages, id);
+      if (m) { state.channel = m.ch; state.search = ''; }
+      break;
+    }
+    case 'mention': {
+      const channel = byId(DB.channels, state.channel);
+      const candidates = channel.members.filter((x) => x !== state.me);
+      state.modal = () => modalShell(t('mentionSomeone'),
+        candidates.map((cid) => `<button class="card row" style="width:100%;margin-bottom:8px;cursor:pointer;text-align:start"
+          data-act="pick-mention" data-id="${cid}">${avatar(cid, '', true)}
+          <span class="grow"><b>${esc(userName(cid))}</b></span></button>`).join(''),
+        `<button class="btn" data-act="close-modal">${esc(t('cancel'))}</button>`);
+      break;
+    }
+    case 'pick-mention': {
+      state.modal = null;
+      state.pendingMention = userName(id).split(' ')[0];
+      break;
+    }
     case 'close-modal': state.modal = null; break;
     case 'month':
       if (id === '0') {
@@ -1023,8 +1176,23 @@ function afterRender() {
     msearch.oninput = (e) => { state.query = e.target.value; const pos = e.target.selectionStart; render();
       const again = document.getElementById('member-search'); again.focus(); again.setSelectionRange(pos, pos); };
   }
+  const searchBox = document.getElementById('msg-search');
+  if (searchBox) {
+    searchBox.oninput = (e) => {
+      state.search = e.target.value;
+      const pos = e.target.selectionStart;
+      render();
+      const again = document.getElementById('msg-search');
+      again.focus();
+      again.setSelectionRange(pos, pos);
+    };
+  }
   const composer = document.getElementById('composer-input');
   if (composer) {
+    if (state.pendingMention) {
+      composer.value = `${composer.value}${composer.value && !composer.value.endsWith(' ') ? ' ' : ''}@${state.pendingMention} `;
+      state.pendingMention = null;
+    }
     composer.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); sendMessage('text'); } };
     composer.focus();
   }
