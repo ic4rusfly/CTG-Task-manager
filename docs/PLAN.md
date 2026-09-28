@@ -229,8 +229,8 @@ Blaze plan, realistically **$0–25/month**: Firestore reads dominate (chat stre
 ## 6. What is in this repository right now
 
 - `docs/PLAN.md` — this document.
-- Flutter app source (`lib/`) — full structure, models, repository interfaces, **mock** repositories with realistic CTG seed data, all v1 screens, and complete ar/fr/en translations. Runs with `flutter run` (no Firebase needed yet).
-- `firebase/` — Firestore rules, indexes and Storage rules; `functions/` (TypeScript Cloud Functions, type-checked in CI); `seed/` (project bootstrap script); `client_reference/` (Firestore repositories to drop into `lib/data/firebase/`).
+- Flutter app source (`lib/`) — full structure, models, repository interfaces, **mock** repositories with realistic CTG seed data **and the Firestore/Auth implementations**, all v1 screens, and complete ar/fr/en translations. `flutter run` uses the mocks; `--dart-define=BACKEND=firebase` uses the real backend.
+- `firebase/` — Firestore rules, indexes and Storage rules; `functions/` (TypeScript Cloud Functions, type-checked in CI); `seed/` (project bootstrap script); `seed/` (project bootstrap script). The Firestore/Auth repositories now live in `lib/data/firebase/` behind `--dart-define=BACKEND=firebase`.
 - `test/` — unit and widget tests; `.github/workflows/ci.yml` — analyze, test, web build, translation and no-emoji gates, Functions type-check.
 - `prototype/` — a self-contained clickable HTML mock of the same UI (used for the live preview in this environment, where the Flutter SDK cannot be installed). It reads the same ARB translations as the app.
 - `tool/` — `gen_l10n.py` (ARB to Dart) and `gen_prototype_i18n.py` (ARB to prototype).

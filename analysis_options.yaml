@@ -2,7 +2,6 @@ include: package:flutter_lints/flutter.yaml
 
 analyzer:
   exclude:
-    - firebase/client_reference/**
     - prototype/**
     - "**/*.g.dart"
 

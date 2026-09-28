@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../../lib/domain/models/models.dart';
-import '../../lib/domain/repositories/repositories.dart';
+import '../../domain/models/models.dart';
+import '../../domain/repositories/repositories.dart';
 
 class FirestoreAgendaRepository implements AgendaRepository {
   FirestoreAgendaRepository({FirebaseFirestore? firestore})

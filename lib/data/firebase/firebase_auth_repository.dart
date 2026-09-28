@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 
-import '../../lib/domain/models/models.dart';
-import '../../lib/domain/repositories/repositories.dart';
+import '../../domain/models/models.dart';
+import '../../domain/repositories/repositories.dart';
 
 /// Firebase Auth + the matching `users/{uid}` profile document.
 class FirebaseAuthRepository implements AuthRepository {

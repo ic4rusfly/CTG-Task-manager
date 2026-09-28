@@ -13,10 +13,9 @@ Built with **Flutter + Riverpod + go_router**, backed by **Firebase** (phase 1).
 
 | Path | What it is |
 |---|---|
-| `lib/` | The Flutter app: models, repository interfaces, mock data layer, all v1 screens, ar/fr/en translations |
+| `lib/` | The Flutter app: models, repository interfaces, **mock and Firebase data layers**, all v1 screens, ar/fr/en translations |
 | `docs/PLAN.md` | Scope, architecture, Firestore data model, security rules, i18n plan, 9-week roadmap, costs, risks |
 | `firebase/` | Firestore rules + indexes, Storage rules, `firebase.json` |
-| `firebase/client_reference/` | Firestore + Auth repository implementations to drop in during phase 1 (not compiled yet) |
 | `firebase/functions/` | Cloud Functions (TypeScript): notifications in each recipient's language, group assignment, onboarding, due-soon cron |
 | `firebase/seed/` | One-shot script that seeds a fresh project with members, teams, `#general` and the CTG project |
 | `test/` | Unit tests (models, mock repositories, localisation) and widget tests (task card, RTL, French) |
@@ -24,9 +23,10 @@ Built with **Flutter + Riverpod + go_router**, backed by **Firebase** (phase 1).
 | `prototype/` | A dependency-free clickable HTML prototype of the same UI (see below) |
 | `tool/` | `gen_l10n.py` (ARB → Dart strings) and `gen_prototype_i18n.py` (ARB → prototype) |
 
-The app currently runs entirely on **in-memory mock repositories** with realistic CTG seed data,
-so you can click through every screen before any Firebase project exists. Swapping in Firebase is
-a provider override — no UI code changes (see `firebase/client_reference/README.md`).
+By default the app runs entirely on **in-memory mock repositories** with realistic CTG seed data,
+so you can click through every screen before any Firebase project exists. The Firestore/Auth
+implementations live in `lib/data/firebase/` and are switched on with
+`--dart-define=BACKEND=firebase`.
 
 ---
 
@@ -34,10 +34,23 @@ a provider override — no UI code changes (see `firebase/client_reference/READM
 
 ```bash
 flutter pub get
-flutter run              # phone / emulator
+flutter run              # phone / emulator - mock data, no backend needed
 flutter run -d chrome    # web
 flutter run -d windows   # or macos
 ```
+
+Against a real backend (after `flutterfire configure`):
+
+```bash
+flutter run --dart-define=BACKEND=firebase
+# or against the local emulator suite:
+flutter run --dart-define=BACKEND=firebase --dart-define=USE_EMULATOR=true
+#   Android emulator: add --dart-define=EMULATOR_HOST=10.0.2.2
+```
+
+`lib/core/env.dart` holds the switch; `lib/data/firebase/firebase_bootstrap.dart` starts Firebase,
+turns on the offline cache and returns the five provider overrides that replace the mock
+repositories. No screen, model or provider changes between the two modes.
 
 Requires Flutter 3.24 or newer. Sign in with any seeded member (for example `yasmine@ctg.ma`,
 role admin) — in demo mode the password is ignored and the member chips on the login screen sign

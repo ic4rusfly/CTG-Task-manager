@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../../lib/domain/models/models.dart';
-import '../../lib/domain/repositories/repositories.dart';
+import '../../domain/models/models.dart';
+import '../../domain/repositories/repositories.dart';
 
 /// Firestore implementation of [ChatRepository].
 class FirestoreChatRepository implements ChatRepository {

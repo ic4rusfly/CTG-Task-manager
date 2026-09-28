@@ -10,7 +10,6 @@ ios/Pods/
 macos/Pods/
 android/.gradle/
 android/local.properties
-**/firebase_options.dart
 google-services.json
 GoogleService-Info.plist
 .env
