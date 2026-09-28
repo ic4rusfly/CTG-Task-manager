@@ -1,0 +1,31 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() { return request.auth != null; }
+    function smallEnough() { return request.resource.size < 25 * 1024 * 1024; }
+    function allowedType() {
+      return request.resource.contentType.matches('image/.*')
+          || request.resource.contentType.matches('audio/.*')
+          || request.resource.contentType.matches('video/mp4')
+          || request.resource.contentType.matches('application/pdf')
+          || request.resource.contentType.matches('application/vnd.*')
+          || request.resource.contentType.matches('text/.*');
+    }
+
+    match /avatars/{uid}/{file} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == uid && smallEnough();
+    }
+
+    match /chat/{channelId}/{file} {
+      allow read: if signedIn();
+      allow write: if signedIn() && smallEnough() && allowedType();
+    }
+
+    match /tasks/{taskId}/{file} {
+      allow read: if signedIn();
+      allow write: if signedIn() && smallEnough() && allowedType();
+    }
+  }
+}

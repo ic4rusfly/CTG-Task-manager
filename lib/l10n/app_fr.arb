@@ -1,0 +1,183 @@
+{
+  "@@locale": "fr",
+  "appName": "CTG Hub",
+  "tagline": "Discussions, tâches et agenda pour les membres CTG",
+  "signIn": "Se connecter",
+  "signOut": "Se déconnecter",
+  "email": "E-mail",
+  "password": "Mot de passe",
+  "demoSignInHint": "Mode démo — choisissez un membre pour vous connecter",
+  "unknownUser": "Aucun membre CTG trouvé avec cet e-mail",
+  "chat": "Discussion",
+  "tasks": "Tâches",
+  "agenda": "Agenda",
+  "members": "Membres",
+  "profile": "Profil",
+  "admin": "Admin",
+  "settings": "Paramètres",
+  "channels": "Canaux",
+  "directMessages": "Messages privés",
+  "newChannel": "Nouveau canal",
+  "newMessage": "Nouveau message",
+  "messageHint": "Écrivez un message…",
+  "send": "Envoyer",
+  "attachImage": "Image",
+  "attachFile": "Fichier",
+  "attachAudio": "Audio",
+  "attachLink": "Lien",
+  "linkTask": "Lier une tâche",
+  "reply": "Répondre",
+  "deleteMessage": "Supprimer le message",
+  "messageDeleted": "Message supprimé",
+  "today": "Aujourd’hui",
+  "yesterday": "Hier",
+  "justNow": "à l’instant",
+  "minutesAgo": "{count} min",
+  "@minutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hoursAgo": "{count} h",
+  "@hoursAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "daysAgo": "{count} j",
+  "@daysAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "membersCount": "{count, plural, =0{Aucun membre} =1{1 membre} other{{count} membres}}",
+  "@membersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "board": "Tableau",
+  "list": "Liste",
+  "myTasks": "Mes tâches",
+  "allTasks": "Toutes les tâches",
+  "newTask": "Nouvelle tâche",
+  "editTask": "Modifier la tâche",
+  "taskTitle": "Titre",
+  "description": "Description",
+  "status": "Statut",
+  "priority": "Priorité",
+  "type": "Type",
+  "assignees": "Assigné(e)s",
+  "reporter": "Créée par",
+  "team": "Équipe",
+  "labels": "Étiquettes",
+  "progress": "Progression",
+  "dueDate": "Échéance",
+  "estimate": "Estimation (h)",
+  "checklist": "Check-list",
+  "attachments": "Pièces jointes",
+  "comments": "Commentaires",
+  "addComment": "Ajouter un commentaire…",
+  "activity": "Activité",
+  "statusBacklog": "Backlog",
+  "statusTodo": "À faire",
+  "statusInProgress": "En cours",
+  "statusReview": "Revue",
+  "statusDone": "Terminé",
+  "statusBlocked": "Bloqué",
+  "priorityLow": "Basse",
+  "priorityMedium": "Moyenne",
+  "priorityHigh": "Haute",
+  "priorityUrgent": "Urgente",
+  "typeTask": "Tâche",
+  "typeBug": "Bug",
+  "typeFeature": "Fonctionnalité",
+  "overdue": "En retard",
+  "dueSoon": "Bientôt due",
+  "noTasks": "Aucune tâche ici pour le moment",
+  "assignToGroup": "Assigner à un groupe",
+  "assignMode": "Mode d’assignation",
+  "sharedTask": "Une tâche partagée",
+  "oneTaskEach": "Une tâche par personne",
+  "selectPeople": "Choisir des personnes",
+  "selectTeam": "Choisir une équipe",
+  "assign": "Assigner",
+  "assigned": "Assignée",
+  "tasksCreated": "{count} tâche(s) créée(s)",
+  "@tasksCreated": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "newEvent": "Nouvel événement",
+  "eventTitle": "Titre de l’événement",
+  "startsAt": "Début",
+  "endsAt": "Fin",
+  "allDay": "Toute la journée",
+  "location": "Lieu",
+  "meetingLink": "Lien de réunion",
+  "attendees": "Participants",
+  "going": "Je participe",
+  "maybe": "Peut-être",
+  "declined": "Refusé",
+  "noEvents": "Rien de prévu ce jour",
+  "upcoming": "À venir",
+  "month": "Mois",
+  "day": "Jour",
+  "language": "Langue",
+  "theme": "Thème",
+  "themeSystem": "Système",
+  "themeLight": "Clair",
+  "themeDark": "Sombre",
+  "notifications": "Notifications",
+  "account": "Compte",
+  "role": "Rôle",
+  "roleMember": "Membre",
+  "roleLead": "Responsable",
+  "roleAdmin": "Administrateur",
+  "title": "Fonction",
+  "phone": "Téléphone",
+  "bio": "Bio",
+  "skills": "Compétences",
+  "message": "Message",
+  "assignTask": "Assigner une tâche",
+  "searchMembers": "Rechercher des membres…",
+  "searchTasks": "Rechercher des tâches…",
+  "manageMembers": "Gérer les membres",
+  "deactivate": "Désactiver",
+  "activate": "Activer",
+  "save": "Enregistrer",
+  "cancel": "Annuler",
+  "delete": "Supprimer",
+  "create": "Créer",
+  "close": "Fermer",
+  "online": "En ligne",
+  "offline": "Hors ligne",
+  "adminOnly": "Réservé aux admins et responsables",
+  "welcomeBack": "Bon retour, {name}",
+  "@welcomeBack": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "overviewOpenTasks": "Tâches ouvertes",
+  "overviewDueThisWeek": "Dues cette semaine",
+  "overviewUnread": "Messages non lus",
+  "reactionAck": "Bien reçu",
+  "reactionAgree": "D’accord",
+  "reactionWatching": "Je suis",
+  "reactionBlocker": "Bloquant",
+  "reactionDone": "Terminé"
+}

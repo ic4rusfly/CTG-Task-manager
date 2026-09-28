@@ -1,0 +1,183 @@
+{
+  "@@locale": "en",
+  "appName": "CTG Hub",
+  "tagline": "Chat, tasks and agenda for CTG members",
+  "signIn": "Sign in",
+  "signOut": "Sign out",
+  "email": "Email",
+  "password": "Password",
+  "demoSignInHint": "Demo mode — pick a member to sign in as",
+  "unknownUser": "No CTG member found with this email",
+  "chat": "Chat",
+  "tasks": "Tasks",
+  "agenda": "Agenda",
+  "members": "Members",
+  "profile": "Profile",
+  "admin": "Admin",
+  "settings": "Settings",
+  "channels": "Channels",
+  "directMessages": "Direct messages",
+  "newChannel": "New channel",
+  "newMessage": "New message",
+  "messageHint": "Write a message…",
+  "send": "Send",
+  "attachImage": "Image",
+  "attachFile": "File",
+  "attachAudio": "Audio",
+  "attachLink": "Link",
+  "linkTask": "Link a task",
+  "reply": "Reply",
+  "deleteMessage": "Delete message",
+  "messageDeleted": "Message deleted",
+  "today": "Today",
+  "yesterday": "Yesterday",
+  "justNow": "now",
+  "minutesAgo": "{count}m",
+  "@minutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hoursAgo": "{count}h",
+  "@hoursAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "daysAgo": "{count}d",
+  "@daysAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "membersCount": "{count, plural, =0{No members} =1{1 member} other{{count} members}}",
+  "@membersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "board": "Board",
+  "list": "List",
+  "myTasks": "My tasks",
+  "allTasks": "All tasks",
+  "newTask": "New task",
+  "editTask": "Edit task",
+  "taskTitle": "Title",
+  "description": "Description",
+  "status": "Status",
+  "priority": "Priority",
+  "type": "Type",
+  "assignees": "Assignees",
+  "reporter": "Reporter",
+  "team": "Team",
+  "labels": "Labels",
+  "progress": "Progress",
+  "dueDate": "Due date",
+  "estimate": "Estimate (h)",
+  "checklist": "Checklist",
+  "attachments": "Attachments",
+  "comments": "Comments",
+  "addComment": "Add a comment…",
+  "activity": "Activity",
+  "statusBacklog": "Backlog",
+  "statusTodo": "To do",
+  "statusInProgress": "In progress",
+  "statusReview": "Review",
+  "statusDone": "Done",
+  "statusBlocked": "Blocked",
+  "priorityLow": "Low",
+  "priorityMedium": "Medium",
+  "priorityHigh": "High",
+  "priorityUrgent": "Urgent",
+  "typeTask": "Task",
+  "typeBug": "Bug",
+  "typeFeature": "Feature",
+  "overdue": "Overdue",
+  "dueSoon": "Due soon",
+  "noTasks": "No tasks here yet",
+  "assignToGroup": "Assign to a group",
+  "assignMode": "Assignment mode",
+  "sharedTask": "One shared task",
+  "oneTaskEach": "One task per person",
+  "selectPeople": "Select people",
+  "selectTeam": "Select a team",
+  "assign": "Assign",
+  "assigned": "Assigned",
+  "tasksCreated": "{count} task(s) created",
+  "@tasksCreated": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "newEvent": "New event",
+  "eventTitle": "Event title",
+  "startsAt": "Starts",
+  "endsAt": "Ends",
+  "allDay": "All day",
+  "location": "Location",
+  "meetingLink": "Meeting link",
+  "attendees": "Attendees",
+  "going": "Going",
+  "maybe": "Maybe",
+  "declined": "Declined",
+  "noEvents": "Nothing planned for this day",
+  "upcoming": "Upcoming",
+  "month": "Month",
+  "day": "Day",
+  "language": "Language",
+  "theme": "Theme",
+  "themeSystem": "System",
+  "themeLight": "Light",
+  "themeDark": "Dark",
+  "notifications": "Notifications",
+  "account": "Account",
+  "role": "Role",
+  "roleMember": "Member",
+  "roleLead": "Lead",
+  "roleAdmin": "Admin",
+  "title": "Job title",
+  "phone": "Phone",
+  "bio": "Bio",
+  "skills": "Skills",
+  "message": "Message",
+  "assignTask": "Assign a task",
+  "searchMembers": "Search members…",
+  "searchTasks": "Search tasks…",
+  "manageMembers": "Manage members",
+  "deactivate": "Deactivate",
+  "activate": "Activate",
+  "save": "Save",
+  "cancel": "Cancel",
+  "delete": "Delete",
+  "create": "Create",
+  "close": "Close",
+  "online": "Online",
+  "offline": "Offline",
+  "adminOnly": "Admins and leads only",
+  "welcomeBack": "Welcome back, {name}",
+  "@welcomeBack": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "overviewOpenTasks": "Open tasks",
+  "overviewDueThisWeek": "Due this week",
+  "overviewUnread": "Unread messages",
+  "reactionAck": "Acknowledged",
+  "reactionAgree": "Agree",
+  "reactionWatching": "Watching",
+  "reactionBlocker": "Blocker",
+  "reactionDone": "Done"
+}
