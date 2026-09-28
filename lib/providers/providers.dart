@@ -50,6 +50,12 @@ final agendaRepositoryProvider = Provider<AgendaRepository>(
   (ref) => MockAgendaRepository(ref.watch(mockDbProvider)),
 );
 
+/// Attachment storage: in-memory by default, Cloud Storage with
+/// `--dart-define=BACKEND=firebase`.
+final mediaRepositoryProvider = Provider<MediaRepository>(
+  (ref) => MockMediaRepository(ref.watch(mockDbProvider)),
+);
+
 /// ---------------------------------------------------------------------------
 /// Session
 /// ---------------------------------------------------------------------------
@@ -100,6 +106,22 @@ final channelsProvider = StreamProvider<List<Channel>>((ref) {
 final messagesProvider =
     StreamProvider.family<List<Message>, String>((ref, channelId) {
   return ref.watch(chatRepositoryProvider).watchMessages(channelId);
+});
+
+/// Replies under one root message.
+final threadProvider =
+    StreamProvider.family<List<Message>, ({String channelId, String rootId})>((ref, key) {
+  return ref.watch(chatRepositoryProvider).watchThread(key.channelId, key.rootId);
+});
+
+/// One message by id, from the already-streamed channel.
+final messageProvider =
+    Provider.family<Message?, ({String channelId, String messageId})>((ref, key) {
+  final messages = ref.watch(messagesProvider(key.channelId)).value ?? const <Message>[];
+  for (final m in messages) {
+    if (m.id == key.messageId) return m;
+  }
+  return null;
 });
 
 final tasksProvider = StreamProvider<List<Task>>(

@@ -31,6 +31,15 @@ class FirestoreChatRepository implements ChatRepository {
           .toList());
 
   @override
+  Stream<List<Message>> watchThread(String channelId, String rootId) => _channels
+      .doc(channelId)
+      .collection('messages')
+      .where('replyToId', isEqualTo: rootId)
+      .orderBy('sentAt')
+      .snapshots()
+      .map((s) => s.docs.map((d) => Message.fromMap(d.id, channelId, d.data())).toList());
+
+  @override
   Future<void> sendMessage(Message message) async {
     final batch = _db.batch();
     final msgRef = _channels.doc(message.channelId).collection('messages').doc();
@@ -42,6 +51,14 @@ class FirestoreChatRepository implements ChatRepository {
         'sentAt': message.sentAt.toIso8601String(),
       },
     });
+    // Keep the "N replies" counter on the root message up to date.
+    final rootId = message.replyToId;
+    if (rootId != null) {
+      batch.update(
+        _channels.doc(message.channelId).collection('messages').doc(rootId),
+        {'threadCount': FieldValue.increment(1)},
+      );
+    }
     await batch.commit();
   }
 

@@ -192,5 +192,15 @@
   "assignedYouTask": "أسند إليك {name} المهمة {key}",
   "inChannel": "في {channel}",
   "resultsCount": "{count, plural, =0{لا رسائل} =1{رسالة واحدة} =2{رسالتان} few{{count} رسائل} other{{count} رسالة}}",
-  "openConversation": "فتح المحادثة"
+  "openConversation": "فتح المحادثة",
+  "thread": "سلسلة الردود",
+  "replyInThread": "الرد في السلسلة",
+  "repliesCount": "{count, plural, =0{لا ردود} =1{رد واحد} =2{ردان} few{{count} ردود} other{{count} رد}}",
+  "repliedToYou": "رد {name} في سلسلتك",
+  "threadReplyHint": "اكتب ردا على السلسلة",
+  "uploading": "جارٍ الرفع",
+  "uploadFailed": "فشل الرفع",
+  "retry": "إعادة المحاولة",
+  "fileTooLarge": "حجم الملف أكبر من {limit}",
+  "openFile": "فتح"
 }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import '../../l10n/app_localizations.dart';
 import '../../domain/models/models.dart';
@@ -129,6 +130,14 @@ class MockChatRepository implements ChatRepository {
       });
 
   @override
+  Stream<List<Message>> watchThread(String channelId, String rootId) =>
+      _db.watchMessages(channelId).map((all) {
+        final replies = all.where((m) => m.replyToId == rootId).toList()
+          ..sort((a, b) => a.sentAt.compareTo(b.sentAt));
+        return replies;
+      });
+
+  @override
   Future<void> sendMessage(Message message) async {
     final msg = message.id.isEmpty
         ? Message(
@@ -154,6 +163,25 @@ class MockChatRepository implements ChatRepository {
         lastMessageSenderId: msg.senderId,
       );
     }
+    // A reply bumps the counter on the root message, and tells its author.
+    if (msg.replyToId != null) {
+      final list = _db.messages[msg.channelId]!;
+      final rootIndex = list.indexWhere((m) => m.id == msg.replyToId);
+      if (rootIndex != -1) {
+        final root = list[rootIndex];
+        list[rootIndex] = root.copyWith(threadCount: root.threadCount + 1);
+        await _notifier?.threadReply(
+          recipientId: root.senderId,
+          actorId: msg.senderId,
+          channelId: msg.channelId,
+          rootId: root.id,
+          text: msg.text.isEmpty
+              ? (msg.attachments.firstOrNull?.name ?? '')
+              : msg.text,
+        );
+      }
+    }
+
     _db.pingMessages(msg.channelId);
     _db.pingChannels();
 
@@ -558,6 +586,27 @@ class MockNotifier {
     }
   }
 
+  Future<void> threadReply({
+    required String recipientId,
+    required String actorId,
+    required String channelId,
+    required String rootId,
+    required String text,
+  }) async {
+    if (recipientId == actorId) return;
+    final actor = _user(actorId)?.displayName ?? '';
+    final t = _l10n(recipientId);
+    await _repo.add(AppNotification(
+      id: '',
+      uid: recipientId,
+      kind: NotificationKind.message,
+      title: t.repliedToYou(actor),
+      body: text,
+      route: '/chat/$channelId/thread/$rootId',
+      createdAt: DateTime.now(),
+    ));
+  }
+
   Future<void> taskAssigned({
     required List<String> recipientIds,
     required String actorId,
@@ -577,4 +626,47 @@ class MockNotifier {
       ));
     }
   }
+}
+
+/// In-memory stand-in for Cloud Storage.
+///
+/// Bytes are kept in [MockDb.blobs] under a `memory://` url so the demo build
+/// renders the very file the member picked, with a simulated progress curve.
+class MockMediaRepository implements MediaRepository {
+  MockMediaRepository(this._db);
+
+  final MockDb _db;
+
+  @override
+  Future<Attachment> upload({
+    required String folder,
+    required String fileName,
+    required String mime,
+    required Uint8List bytes,
+    int? durationMs,
+    void Function(double progress)? onProgress,
+  }) async {
+    if (bytes.length > MediaRepository.maxBytes) {
+      throw MediaTooLargeException(bytes.length);
+    }
+    for (var step = 1; step <= 5; step++) {
+      await Future<void>.delayed(const Duration(milliseconds: 90));
+      onProgress?.call(step / 5);
+    }
+    final url = 'memory://${_id('blob')}/$fileName';
+    _db.blobs[url] = bytes;
+    return Attachment(
+      url: url,
+      name: fileName,
+      mime: mime,
+      sizeBytes: bytes.length,
+      durationMs: durationMs,
+    );
+  }
+
+  @override
+  Uint8List? localBytes(String url) => _db.blobs[url];
+
+  @override
+  Future<void> delete(String url) async => _db.blobs.remove(url);
 }

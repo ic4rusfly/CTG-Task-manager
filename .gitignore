@@ -13,3 +13,5 @@ android/local.properties
 google-services.json
 GoogleService-Info.plist
 .env
+node_modules/
+firebase/functions/lib/

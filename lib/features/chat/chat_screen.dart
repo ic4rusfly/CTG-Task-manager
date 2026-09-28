@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/attachment_picker.dart';
 import '../../core/formatters.dart';
 import '../../core/labels.dart';
 import '../../core/mentions.dart';
@@ -9,6 +10,7 @@ import '../../core/theme.dart';
 import '../../domain/models/models.dart';
 import '../../providers/providers.dart';
 import '../../widgets/common.dart';
+import 'chat_composer.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key, required this.channelId, this.showBackButton = true});
@@ -21,7 +23,6 @@ class ChatScreen extends ConsumerStatefulWidget {
 }
 
 class _ChatScreenState extends ConsumerState<ChatScreen> {
-  final _controller = TextEditingController();
   final _scroll = ScrollController();
 
   @override
@@ -45,38 +46,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   void dispose() {
-    _controller.dispose();
     _scroll.dispose();
     super.dispose();
   }
 
-  Future<void> _send({
-    String? text,
-    MessageType type = MessageType.text,
-    List<Attachment> attachments = const [],
-    String? taskId,
-    String? linkUrl,
-  }) async {
-    final me = ref.read(currentUserProvider);
-    final body = (text ?? _controller.text).trim();
-    if (me == null) return;
-    final mentions = parseMentions(body, ref.read(usersProvider).value ?? const []);
-    if (body.isEmpty && attachments.isEmpty && taskId == null && linkUrl == null) return;
-    _controller.clear();
-    await ref.read(chatRepositoryProvider).sendMessage(
-          Message(
-            id: '',
-            channelId: widget.channelId,
-            senderId: me.id,
-            sentAt: DateTime.now(),
-            type: type,
-            text: body,
-            attachments: attachments,
-            taskId: taskId,
-            linkUrl: linkUrl,
-            mentions: mentions,
-          ),
-        );
+  Future<void> _scrollToEnd() async {
     await Future<void>.delayed(const Duration(milliseconds: 50));
     if (_scroll.hasClients) {
       _scroll.animateTo(
@@ -94,7 +68,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final usersById = ref.watch(usersByIdProvider);
     final channels = ref.watch(channelsProvider).value ?? const <Channel>[];
     final channel = channels.where((c) => c.id == widget.channelId).firstOrNull;
-    final messages = ref.watch(messagesProvider(widget.channelId)).value ?? const <Message>[];
+    final all = ref.watch(messagesProvider(widget.channelId)).value ?? const <Message>[];
+    // Thread replies live in their own view, not in the channel timeline.
+    final messages = all.where((m) => m.replyToId == null).toList();
     final peer = channel?.isDm == true ? usersById[channel!.peerOf(me?.id ?? '')] : null;
     final title = channel == null
         ? ''
@@ -177,138 +153,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     },
                   ),
           ),
-          _Composer(
-            controller: _controller,
-            onSend: () => _send(),
-            onAttach: (type) => _attach(type),
-            onMention: _pickMention,
+          ChatComposer(
+            channelId: widget.channelId,
+            onSent: _scrollToEnd,
           ),
         ],
       ),
     );
   }
 
-  /// Inserts "@Name" at the caret; [parseMentions] turns it into a real
-  /// mention (and a notification) when the message is sent.
-  Future<void> _pickMention() async {
-    final me = ref.read(currentUserProvider);
-    final channels = ref.read(channelsProvider).value ?? const <Channel>[];
-    final channel = channels.where((c) => c.id == widget.channelId).firstOrNull;
-    final usersById = ref.read(usersByIdProvider);
-    final candidates = (channel?.memberIds ?? const <String>[])
-        .where((id) => id != me?.id)
-        .map((id) => usersById[id])
-        .whereType<AppUser>()
-        .toList();
-    if (candidates.isEmpty) return;
-
-    final picked = await showModalBottomSheet<AppUser>(
-      context: context,
-      showDragHandle: true,
-      builder: (_) => ListView(
-        shrinkWrap: true,
-        children: [
-          for (final u in candidates)
-            ListTile(
-              leading: UserAvatar(user: u, size: 34, showPresence: true),
-              title: Text(u.displayName),
-              subtitle: Text(u.title),
-              onTap: () => Navigator.of(context).pop(u),
-            ),
-        ],
-      ),
-    );
-    if (picked == null) return;
-
-    final handle = picked.displayName.split(' ').first;
-    final text = _controller.text;
-    final selection = _controller.selection;
-    final at = selection.isValid ? selection.start : text.length;
-    final prefix = text.substring(0, at);
-    final suffix = text.substring(at);
-    final needsSpace = prefix.isNotEmpty && !prefix.endsWith(' ');
-    final insert = '${needsSpace ? ' ' : ''}@$handle ';
-    _controller.text = '$prefix$insert$suffix';
-    _controller.selection =
-        TextSelection.collapsed(offset: (prefix + insert).length);
-  }
-
-  Future<void> _attach(MessageType type) async {
-    // In the mock build attachments are simulated; phase 2 wires image_picker /
-    // file_picker + Firebase Storage here (see docs/PLAN.md §5).
-    switch (type) {
-      case MessageType.image:
-        await _send(
-          text: '',
-          type: MessageType.image,
-          attachments: [
-            Attachment(
-              url: 'https://picsum.photos/seed/${DateTime.now().millisecond}/800/520',
-              name: 'photo.jpg',
-              mime: 'image/jpeg',
-              sizeBytes: 480000,
-            ),
-          ],
-        );
-        break;
-      case MessageType.file:
-        await _send(
-          text: '',
-          type: MessageType.file,
-          attachments: const [
-            Attachment(
-              url: '#',
-              name: 'ctg-document.pdf',
-              mime: 'application/pdf',
-              sizeBytes: 182000,
-            ),
-          ],
-        );
-        break;
-      case MessageType.audio:
-        await _send(
-          text: '',
-          type: MessageType.audio,
-          attachments: const [
-            Attachment(
-              url: '#',
-              name: 'voice-note.m4a',
-              mime: 'audio/mp4',
-              sizeBytes: 320000,
-              durationMs: 34000,
-            ),
-          ],
-        );
-        break;
-      case MessageType.link:
-        await _send(text: 'https://ctg.ma', type: MessageType.link, linkUrl: 'https://ctg.ma');
-        break;
-      case MessageType.taskRef:
-        final tasks = ref.read(tasksProvider).value ?? const <Task>[];
-        if (!mounted || tasks.isEmpty) return;
-        final picked = await showModalBottomSheet<Task>(
-          context: context,
-          showDragHandle: true,
-          builder: (_) => ListView(
-            shrinkWrap: true,
-            children: [
-              for (final task in tasks)
-                ListTile(
-                  title: Text(task.title),
-                  subtitle: Text(task.key),
-                  onTap: () => Navigator.of(context).pop(task),
-                ),
-            ],
-          ),
-        );
-        if (picked != null) {
-          await _send(text: picked.key, type: MessageType.taskRef, taskId: picked.id);
-        }
-        break;
-      default:
-        break;
-    }
-  }
 }
 
 extension<T> on Iterable<T> {
@@ -353,12 +206,16 @@ class MessageBubble extends ConsumerWidget {
     required this.sender,
     required this.isMine,
     this.grouped = false,
+    this.showThread = true,
   });
 
   final Message message;
   final AppUser? sender;
   final bool isMine;
   final bool grouped;
+
+  /// Thread affordances are hidden inside the thread view itself.
+  final bool showThread;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -428,6 +285,30 @@ class MessageBubble extends ConsumerWidget {
                           formatTime(message.sentAt, locale),
                           style: Theme.of(context).textTheme.labelSmall,
                         ),
+                        if (showThread && message.threadCount > 0) ...[
+                          const SizedBox(width: 8),
+                          InkWell(
+                            onTap: () => GoRouter.of(context).go(
+                                '/chat/${message.channelId}/thread/${message.id}'),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.forum_outlined,
+                                    size: 12, color: scheme.primary),
+                                const SizedBox(width: 4),
+                                Text(
+                                  t.repliesCount(message.threadCount),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .labelSmall
+                                      ?.copyWith(
+                                          color: scheme.primary,
+                                          fontWeight: FontWeight.w700),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                         if (message.reactions.isNotEmpty) ...[
                           const SizedBox(width: 8),
                           Wrap(
@@ -479,6 +360,7 @@ class MessageBubble extends ConsumerWidget {
 
   void _showActions(BuildContext context, WidgetRef ref, String? uid) {
     final t = tr(context);
+    final router = GoRouter.of(context);
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -501,6 +383,15 @@ class MessageBubble extends ConsumerWidget {
                   ),
               ],
             ),
+            if (showThread && !message.deleted)
+              ListTile(
+                leading: const Icon(Icons.forum_outlined),
+                title: Text(t.replyInThread),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  router.go('/chat/${message.channelId}/thread/${message.id}');
+                },
+              ),
             if (isMine)
               ListTile(
                 leading: const Icon(Icons.delete_outline),
@@ -530,6 +421,13 @@ class _MessageBody extends ConsumerWidget {
     switch (message.type) {
       case MessageType.image:
         final a = message.attachments.first;
+        final local = ref.watch(mediaRepositoryProvider).localBytes(a.url);
+        if (local != null) {
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Image.memory(local, width: 320, fit: BoxFit.cover),
+          );
+        }
         return ClipRRect(
           borderRadius: BorderRadius.circular(10),
           child: Image.network(
@@ -556,7 +454,8 @@ class _MessageBody extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(a.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                Text(a.readableSize, style: Theme.of(context).textTheme.labelSmall),
+                Text(a.readableSize.isEmpty ? readableBytes(a.sizeBytes) : a.readableSize,
+                    style: Theme.of(context).textTheme.labelSmall),
               ],
             ),
           ],
@@ -639,97 +538,6 @@ class _MessageBody extends ConsumerWidget {
     }
   }
 }
-
-class _Composer extends StatelessWidget {
-  const _Composer({
-    required this.controller,
-    required this.onSend,
-    required this.onAttach,
-    required this.onMention,
-  });
-
-  final TextEditingController controller;
-  final VoidCallback onSend;
-  final ValueChanged<MessageType> onAttach;
-  final VoidCallback onMention;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = tr(context);
-    return SafeArea(
-      top: false,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          border: Border(
-            top: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
-          ),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            PopupMenuButton<MessageType>(
-              icon: const Icon(Icons.add_circle_outline),
-              onSelected: onAttach,
-              itemBuilder: (context) => [
-                PopupMenuItem(
-                  value: MessageType.image,
-                  child: ListTile(leading: const Icon(Icons.image_outlined), title: Text(t.attachImage)),
-                ),
-                PopupMenuItem(
-                  value: MessageType.file,
-                  child: ListTile(
-                      leading: const Icon(Icons.attach_file), title: Text(t.attachFile)),
-                ),
-                PopupMenuItem(
-                  value: MessageType.audio,
-                  child: ListTile(
-                      leading: const Icon(Icons.mic_none), title: Text(t.attachAudio)),
-                ),
-                PopupMenuItem(
-                  value: MessageType.link,
-                  child: ListTile(
-                      leading: const Icon(Icons.link), title: Text(t.attachLink)),
-                ),
-                PopupMenuItem(
-                  value: MessageType.taskRef,
-                  child: ListTile(
-                      leading: const Icon(Icons.task_alt), title: Text(t.linkTask)),
-                ),
-              ],
-            ),
-            IconButton(
-              tooltip: t.mentionSomeone,
-              icon: const Icon(Icons.alternate_email),
-              onPressed: onMention,
-            ),
-            Expanded(
-              child: TextField(
-                controller: controller,
-                minLines: 1,
-                maxLines: 5,
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) => onSend(),
-                decoration: InputDecoration(
-                  hintText: t.messageHint,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                ),
-              ),
-            ),
-            const SizedBox(width: 6),
-            IconButton.filled(
-              onPressed: onSend,
-              icon: const Icon(Icons.send),
-              tooltip: t.send,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 
 /// Renders message text with "@mentions" highlighted, and tints the whole line
 /// when the signed-in member is the one being mentioned.

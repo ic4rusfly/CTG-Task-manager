@@ -1,6 +1,9 @@
+import 'dart:typed_data';
+
 import 'package:ctg_hub/data/mock/mock_db.dart';
 import 'package:ctg_hub/data/mock/mock_repositories.dart';
 import 'package:ctg_hub/domain/models/models.dart';
+import 'package:ctg_hub/domain/repositories/repositories.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -114,6 +117,117 @@ void main() {
   });
 
   group('notifications', notificationTests);
+  group('threads', threadTests);
+  group('media', mediaTests);
+}
+
+// ---------------------------------------------------------------------------
+// Threads: replies hang off a root message, never show in the timeline, and
+// keep the root's counter up to date.
+// ---------------------------------------------------------------------------
+void threadTests() {
+  late MockDb db;
+  late MockNotificationRepository notifications;
+  late MockChatRepository chat;
+
+  setUp(() {
+    db = MockDb();
+    notifications = MockNotificationRepository(db);
+    chat = MockChatRepository(db, MockNotifier(db, notifications));
+  });
+
+  Message reply(String from, String text) => Message(
+        id: '',
+        channelId: 'c_general',
+        senderId: from,
+        sentAt: DateTime.now(),
+        text: text,
+        replyToId: 'm1',
+      );
+
+  test('the seeded thread is readable and excluded from the timeline', () async {
+    final replies = await chat.watchThread('c_general', 'm1').first;
+    expect(replies, hasLength(2));
+    expect(replies.every((m) => m.replyToId == 'm1'), isTrue);
+
+    final timeline = await chat.watchMessages('c_general').first;
+    expect(timeline.where((m) => m.replyToId != null), isEmpty,
+        reason: 'the channel view filters replies out by replyToId');
+  });
+
+  test('a reply increments the root threadCount', () async {
+    await chat.sendMessage(reply('u3', 'One more thing.'));
+    final root = db.messages['c_general']!.firstWhere((m) => m.id == 'm1');
+    expect(root.threadCount, 3);
+    expect(await chat.watchThread('c_general', 'm1').first, hasLength(3));
+  });
+
+  test('replying notifies the root author in their language', () async {
+    await chat.sendMessage(reply('u3', 'Works for me.'));
+    // m1 was written by u1, who reads French.
+    final notification = db.notifications['u1']!.last;
+    expect(notification.title, contains('a répondu'));
+    expect(notification.route, '/chat/c_general/thread/m1');
+  });
+
+  test('replying to yourself does not notify you', () async {
+    await chat.sendMessage(reply('u1', 'Adding a detail.'));
+    expect(db.notifications['u1'] ?? const <AppNotification>[], isEmpty);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Attachment upload (the mock stands in for Cloud Storage).
+// ---------------------------------------------------------------------------
+void mediaTests() {
+  late MockDb db;
+  late MockMediaRepository media;
+
+  setUp(() {
+    db = MockDb();
+    media = MockMediaRepository(db);
+  });
+
+  test('upload reports progress and returns a readable attachment', () async {
+    final progress = <double>[];
+    final attachment = await media.upload(
+      folder: 'chat/c_general',
+      fileName: 'poster.png',
+      mime: 'image/png',
+      bytes: Uint8List.fromList(List<int>.filled(2048, 7)),
+      onProgress: progress.add,
+    );
+
+    expect(progress, isNotEmpty);
+    expect(progress.last, 1);
+    expect(attachment.isImage, isTrue);
+    expect(attachment.sizeBytes, 2048);
+    expect(attachment.readableSize, '2.0 KB');
+    expect(media.localBytes(attachment.url), hasLength(2048));
+  });
+
+  test('files above the storage limit are rejected', () async {
+    expect(
+      () => media.upload(
+        folder: 'chat/c_general',
+        fileName: 'huge.bin',
+        mime: 'application/octet-stream',
+        bytes: Uint8List(MediaRepository.maxBytes + 1),
+      ),
+      throwsA(isA<MediaTooLargeException>()),
+    );
+  });
+
+  test('deleting an attachment drops the bytes', () async {
+    final attachment = await media.upload(
+      folder: 'chat/c_general',
+      fileName: 'note.txt',
+      mime: 'text/plain',
+      bytes: Uint8List.fromList([1, 2, 3]),
+    );
+    await media.delete(attachment.url);
+    expect(media.localBytes(attachment.url), isNull);
+  });
 }
 
 // ---------------------------------------------------------------------------

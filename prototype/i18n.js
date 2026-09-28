@@ -151,7 +151,17 @@ window.I18N = {
     "assignedYouTask": "{name} assigned you {key}",
     "inChannel": "in {channel}",
     "resultsCount": "{count, plural, =0{No messages} =1{1 message} other{{count} messages}}",
-    "openConversation": "Open conversation"
+    "openConversation": "Open conversation",
+    "thread": "Thread",
+    "replyInThread": "Reply in thread",
+    "repliesCount": "{count, plural, =0{No replies} =1{1 reply} other{{count} replies}}",
+    "repliedToYou": "{name} replied in your thread",
+    "threadReplyHint": "Reply to the thread",
+    "uploading": "Uploading",
+    "uploadFailed": "Upload failed",
+    "retry": "Retry",
+    "fileTooLarge": "File is larger than {limit}",
+    "openFile": "Open"
   },
   "fr": {
     "appName": "CTG Hub",
@@ -304,7 +314,17 @@ window.I18N = {
     "assignedYouTask": "{name} vous a assigné {key}",
     "inChannel": "dans {channel}",
     "resultsCount": "{count, plural, =0{Aucun message} =1{1 message} other{{count} messages}}",
-    "openConversation": "Ouvrir la conversation"
+    "openConversation": "Ouvrir la conversation",
+    "thread": "Fil de discussion",
+    "replyInThread": "Répondre dans le fil",
+    "repliesCount": "{count, plural, =0{Aucune réponse} =1{1 réponse} other{{count} réponses}}",
+    "repliedToYou": "{name} a répondu dans votre fil",
+    "threadReplyHint": "Répondre au fil",
+    "uploading": "Téléversement",
+    "uploadFailed": "Échec du téléversement",
+    "retry": "Réessayer",
+    "fileTooLarge": "Le fichier dépasse {limit}",
+    "openFile": "Ouvrir"
   },
   "ar": {
     "appName": "مركز CTG",
@@ -457,6 +477,16 @@ window.I18N = {
     "assignedYouTask": "أسند إليك {name} المهمة {key}",
     "inChannel": "في {channel}",
     "resultsCount": "{count, plural, =0{لا رسائل} =1{رسالة واحدة} =2{رسالتان} few{{count} رسائل} other{{count} رسالة}}",
-    "openConversation": "فتح المحادثة"
+    "openConversation": "فتح المحادثة",
+    "thread": "سلسلة الردود",
+    "replyInThread": "الرد في السلسلة",
+    "repliesCount": "{count, plural, =0{لا ردود} =1{رد واحد} =2{ردان} few{{count} ردود} other{{count} رد}}",
+    "repliedToYou": "رد {name} في سلسلتك",
+    "threadReplyHint": "اكتب ردا على السلسلة",
+    "uploading": "جارٍ الرفع",
+    "uploadFailed": "فشل الرفع",
+    "retry": "إعادة المحاولة",
+    "fileTooLarge": "حجم الملف أكبر من {limit}",
+    "openFile": "فتح"
   }
 };

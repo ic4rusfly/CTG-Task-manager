@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import '../models/models.dart';
 
 /// Authentication + "who am I" concerns.
@@ -22,6 +24,8 @@ abstract class ChatRepository {
   /// Channels and DMs the user belongs to, most recent activity first.
   Stream<List<Channel>> watchChannels(String uid);
   Stream<List<Message>> watchMessages(String channelId, {int limit = 100});
+  /// Replies attached to [rootId], oldest first.
+  Stream<List<Message>> watchThread(String channelId, String rootId);
   Future<void> sendMessage(Message message);
   Future<void> toggleReaction(String channelId, String messageId, String emoji, String uid);
   Future<void> deleteMessage(String channelId, String messageId);
@@ -61,6 +65,40 @@ abstract class AgendaRepository {
   Future<void> updateEvent(AgendaEvent event);
   Future<void> setRsvp(String eventId, String uid, Rsvp rsvp);
   Future<void> deleteEvent(String eventId);
+}
+
+/// Thrown when a picked file exceeds [MediaRepository.maxBytes].
+class MediaTooLargeException implements Exception {
+  const MediaTooLargeException(this.sizeBytes);
+
+  final int sizeBytes;
+
+  @override
+  String toString() => 'MediaTooLargeException($sizeBytes bytes)';
+}
+
+/// Binary upload target for chat and task attachments.
+///
+/// The Firebase implementation writes to Cloud Storage under
+/// `chat/{channelId}/...` (see `firebase/storage.rules`); the mock keeps the
+/// bytes in memory so the demo build shows real pictures without a backend.
+abstract class MediaRepository {
+  /// Largest upload accepted, matching the Storage rule.
+  static const int maxBytes = 25 * 1024 * 1024;
+
+  Future<Attachment> upload({
+    required String folder,
+    required String fileName,
+    required String mime,
+    required Uint8List bytes,
+    int? durationMs,
+    void Function(double progress)? onProgress,
+  });
+
+  /// Bytes for an attachment that lives in memory (mock backend), else null.
+  Uint8List? localBytes(String url);
+
+  Future<void> delete(String url);
 }
 
 abstract class NotificationRepository {

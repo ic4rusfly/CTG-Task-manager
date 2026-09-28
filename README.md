@@ -21,7 +21,7 @@ Built with **Flutter + Riverpod + go_router**, backed by **Firebase** (phase 1).
 | `test/` | Unit tests (models, mock repositories, mentions, localisation) and widget tests (task card, RTL, French) |
 | `.github/workflows/ci.yml` | CI: translation + no-emoji checks, `flutter analyze`, `flutter test`, web build, Functions type-check |
 | `prototype/` | A dependency-free clickable HTML prototype of the same UI (see below) |
-| `tool/` | `gen_l10n.py` (ARB → Dart strings) and `gen_prototype_i18n.py` (ARB → prototype) |
+| `tool/` | `gen_l10n.py` (ARB → Dart strings), `gen_prototype_i18n.py` (ARB → prototype) and `prototype_smoke.js` (headless prototype test) |
 
 By default the app runs entirely on **in-memory mock repositories** with realistic CTG seed data,
 so you can click through every screen before any Firebase project exists. The Firestore/Auth
@@ -69,12 +69,28 @@ python3 -m http.server 3000 --directory prototype
 
 It mirrors the Flutter UI screen for screen and reads the **same translation files**
 (`prototype/i18n.js` is generated from `lib/l10n/*.arb`), so it is safe to use for stakeholder
-reviews. You can: chat and attach media, mention a teammate with `@`, search every message you
-can see, read the notification centre, drag task cards across the board, open a task and move
+reviews. You can: chat and attach real files from your machine, reply in a thread, mention a
+teammate with `@`, search every message you can see, read the notification centre, drag task
+cards across the board, open a task and move
 its progress, assign a task to a group (shared or one-per-person), browse the agenda and RSVP,
 manage members as admin, and switch language (including RTL Arabic) and theme.
 
 ---
+
+## Attachments and threads
+
+- The plus button in the composer opens the real platform file picker
+  (`file_picker`, so it works on Android, iOS, web, Windows and macOS). The
+  bytes go through `MediaRepository`: **Cloud Storage** under
+  `chat/{channelId}/...` in Firebase mode, an in-memory store in the demo
+  build, both capped at 25 MB to match `firebase/storage.rules`.
+- Uploads show a progress bar in the composer and, if something fails, an
+  inline error with a retry action. Pictures are rendered from memory in the
+  demo build and from the download URL in production.
+- Any message can be turned into a **thread**: long-press (or the thread icon)
+  gives "Reply in thread", the root message keeps a "N replies" chip, replies
+  are hidden from the channel timeline, and the thread has its own composer.
+  A reply notifies the root author — never the whole channel.
 
 ## Mentions, search and notifications
 
@@ -130,7 +146,12 @@ In-app notifications are written to `notifications/{uid}/items` by the same Func
 ```bash
 flutter test                     # unit + widget
 cd firebase/functions && npm run typecheck
+cd tool && npm install && node prototype_smoke.js   # headless prototype smoke test
 ```
+
+The prototype smoke test drives the prototype in jsdom: sign-in, navigation,
+notifications, search, mentions, threads, a real file upload, all three
+languages and the no-emoji rule. It runs in CI next to the Flutter job.
 
 ## Roadmap at a glance
 

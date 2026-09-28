@@ -64,6 +64,11 @@ const STRINGS: Record<string, Template> = {
     fr: '{actor} vous a invité à {title} le {date}',
     ar: 'دعاك {actor} إلى {title} بتاريخ {date}',
   },
+  threadReplyTitle: {
+    en: '{actor} replied in your thread',
+    fr: '{actor} a répondu dans votre fil',
+    ar: 'رد {actor} في سلسلتك',
+  },
   attachmentFallback: {
     en: 'sent an attachment',
     fr: 'a envoyé une pièce jointe',

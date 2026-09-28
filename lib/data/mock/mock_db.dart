@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import '../../domain/models/models.dart';
 
@@ -19,6 +20,9 @@ class MockDb {
   final Map<String, List<TaskComment>> comments = {};
   final List<AgendaEvent> events = [];
   final Map<String, List<AppNotification>> notifications = {};
+
+  /// Attachment bytes for the mock backend, keyed by `memory://<id>` url.
+  final Map<String, Uint8List> blobs = {};
 
   final _usersCtrl = StreamController<void>.broadcast();
   final _channelsCtrl = StreamController<void>.broadcast();
@@ -236,6 +240,8 @@ class MockDb {
       String? taskId,
       String? linkUrl,
       Map<String, List<String>> reactions = const {},
+      String? replyToId,
+      int threadCount = 0,
     }) {
       messages.putIfAbsent(channelId, () => []).add(Message(
             id: id,
@@ -248,13 +254,15 @@ class MockDb {
             taskId: taskId,
             linkUrl: linkUrl,
             reactions: reactions,
+            replyToId: replyToId,
+            threadCount: threadCount,
           ));
     }
 
     msg('m1', 'c_general', 'u1',
         'Good morning everyone. Reminder: the CTG Day planning review is on Thursday.',
         const Duration(hours: 6),
-        reactions: const {'ack': ['u2', 'u5'], 'agree': ['u3']});
+        reactions: const {'ack': ['u2', 'u5'], 'agree': ['u3']}, threadCount: 2);
     msg('m2', 'c_general', 'u5', 'The new poster draft is ready, feedback welcome!', const Duration(hours: 5),
         type: MessageType.image,
         attachments: const [
@@ -275,6 +283,12 @@ class MockDb {
     msg('m6', 'c_general', 'u6', 'Useful read on Firestore pricing', const Duration(minutes: 8),
         type: MessageType.link, linkUrl: 'https://firebase.google.com/docs/firestore/pricing');
 
+    // A seeded thread hanging off m1, so the thread view has content on day one.
+    msg('m1r1', 'c_general', 'u3', 'Thursday works for me. Can we start at 15:00?',
+        const Duration(hours: 5, minutes: 30), replyToId: 'm1');
+    msg('m1r2', 'c_general', 'u1', 'Yes, 15:00 in the small meeting room.',
+        const Duration(hours: 5, minutes: 10), replyToId: 'm1');
+
     msg('m10', 'c_tech', 'u2', 'Release 0.4 is on staging, please test the agenda view.', const Duration(hours: 3));
     msg('m11', 'c_tech', 'u6', 'Found a bug with recurring events, opening a ticket.', const Duration(hours: 2),
         reactions: const {'watching': ['u2']});
@@ -287,7 +301,11 @@ class MockDb {
 
     for (var i = 0; i < channels.length; i++) {
       final c = channels[i];
-      final last = messages[c.id]?.last;
+      // Thread replies do not become the conversation preview.
+      final roots = (messages[c.id] ?? const <Message>[])
+          .where((m) => m.replyToId == null)
+          .toList();
+      final last = roots.isEmpty ? null : roots.last;
       if (last != null) {
         channels[i] = c.copyWith(
           lastMessageText: last.text,

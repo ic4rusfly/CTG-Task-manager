@@ -22,6 +22,8 @@ const state = {
   month: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
   modal: null,
   search: '',
+  thread: null,
+  upload: null,
 };
 
 function t(key, params) {
@@ -126,6 +128,7 @@ const ICONS = {
   assign: svg('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/>'),
   back: svg('<path d="M19 12H5M12 19l-7-7 7-7"/>'),
   bell: svg('<path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>'),
+  thread: svg('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/>'),
   at: svg('<circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/>'),
   clock: svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
   swap: svg('<path d="M17 2l4 4-4 4"/><path d="M3 6h18M7 22l-4-4 4-4"/><path d="M21 18H3"/>'),
@@ -140,7 +143,11 @@ const myChannels = () =>
     .filter((c) => c.members.includes(state.me))
     .map((c) => ({ ...c, last: lastMessage(c.id) }))
     .sort((a, b) => (b.last ? b.last.at : 0) - (a.last ? a.last.at : 0));
-const channelMessages = (id) => DB.messages.filter((m) => m.ch === id).sort((a, b) => a.at - b.at);
+// Thread replies never show in the channel timeline or in the preview line.
+const channelMessages = (id) =>
+  DB.messages.filter((m) => m.ch === id && !m.replyTo).sort((a, b) => a.at - b.at);
+const threadReplies = (rootId) =>
+  DB.messages.filter((m) => m.replyTo === rootId).sort((a, b) => a.at - b.at);
 const lastMessage = (id) => channelMessages(id).slice(-1)[0];
 const unread = (c) => {
   const since = c.read[state.me];
@@ -272,6 +279,7 @@ function render() {
       <div class="content" id="content">${viewHtml()}</div>
     </section>
     ${state.taskOpen ? taskPanel(byId(DB.tasks, state.taskOpen)) : ''}
+    ${state.thread ? threadPanel() : ''}
     ${state.modal ? state.modal() : ''}
   `;
   afterRender();
@@ -405,6 +413,13 @@ function chatMain(c) {
     </div>
     <div class="messages" id="messages">${rows || `<div class="empty">${esc(t('messageHint'))}</div>`}</div>
     <div class="composer">
+      ${state.upload ? `<div class="row small" style="padding:0 0 8px">
+        ${state.upload.error ? `<span style="color:var(--maroon)">${esc(state.upload.error)}</span>
+          ${state.upload.retry ? `<button class="btn small" data-act="retry-upload">${esc(t('retry'))}</button>` : ''}
+          <button class="btn small ghost" data-act="dismiss-upload">${esc(t('close'))}</button>`
+        : `<span class="muted">${esc(t('uploading'))} ${esc(state.upload.name)}</span>
+           <span class="grow">${progressBar(Math.round(state.upload.progress * 100))}</span>`}
+      </div>` : ''}
       <div class="tools">
         <button class="btn small ghost" data-act="attach" data-id="image">${ICONS.image}${esc(t('attachImage'))}</button>
         <button class="btn small ghost" data-act="attach" data-id="file">${ICONS.file}${esc(t('attachFile'))}</button>
@@ -420,13 +435,20 @@ function chatMain(c) {
     </div>`;
 }
 
-function messageHtml(m) {
+function messageHtml(m, opts = {}) {
   const mine = m.from === state.me;
+  const replies = opts.inThread ? 0 : threadReplies(m.id).length;
   let body = '';
   if (m.type === 'image') {
-    body = `<div style="width:320px;height:190px;border-radius:8px;background:
+    // Files picked by the member are held as data urls, exactly like the
+    // Flutter mock backend keeps them in memory.
+    body = (m.att.url
+      ? `<img src="${esc(m.att.url)}" alt="${esc(m.att.name)}"
+           style="width:320px;border-radius:8px;display:block">`
+      : `<div style="width:320px;height:190px;border-radius:8px;background:
       linear-gradient(135deg, var(--surface-2), var(--grey-light));display:grid;place-items:center;color:var(--text-dim)">
-      ${ICONS.image}</div><div class="small muted" style="margin-top:4px">${esc(m.att.name)} - ${esc(m.att.size)}</div>`;
+      ${ICONS.image}</div>`)
+      + `<div class="small muted" style="margin-top:4px">${esc(m.att.name)} - ${esc(m.att.size)}</div>`;
   } else if (m.type === 'file') {
     body = `<div class="attach">${ICONS.file}<span><b>${esc(m.att.name)}</b><br><span class="small muted">${esc(m.att.size)}</span></span></div>`;
   } else if (m.type === 'audio') {
@@ -468,8 +490,12 @@ function messageHtml(m) {
           <span class="when">${esc(fmtTime(m.at))}</span></div>
         <div class="bubble">${body}${text}</div>
         <div class="reactions">${reactions}</div>
+        ${replies ? `<button class="btn small ghost" data-act="open-thread" data-id="${m.id}"
+          style="margin-top:4px">${ICONS.thread}${esc(t('repliesCount', { count: replies }))}</button>` : ''}
       </div>
       <div class="msg-actions">${picker}
+        ${opts.inThread ? '' : `<button class="btn icon small ghost" data-act="open-thread" data-id="${m.id}"
+          title="${esc(t('replyInThread'))}">${ICONS.thread}</button>`}
         ${mine ? `<button class="btn icon small ghost" data-act="del-msg" data-id="${m.id}"
           title="${esc(t('deleteMessage'))}">${ICONS.trash}</button>` : ''}</div>
     </div>`;
@@ -658,6 +684,34 @@ function agendaView() {
           ${ICONS.tasks}<span class="grow">${esc(task.key)} - ${esc(task.title)}</span>
           ${chip(t('dueDate'))}
         </div>`).join('')}
+    </div>`;
+}
+
+function threadPanel() {
+  const root = byId(DB.messages, state.thread);
+  if (!root) return '';
+  const replies = threadReplies(root.id);
+  return `
+    <div class="overlay" data-act="close-thread">
+      <div class="panel" data-stop="1">
+        <div class="panel-head">
+          <button class="btn icon ghost" data-act="close-thread">${ICONS.close}</button>
+          <b>${esc(t('thread'))}</b>
+          <div class="grow"></div>
+          <span class="small muted">${esc(t('repliesCount', { count: replies.length }))}</span>
+        </div>
+        <div class="pad">
+          ${messageHtml(root, { inThread: true })}
+          <div class="day-sep">${esc(t('repliesCount', { count: replies.length }))}</div>
+          ${replies.map((m) => messageHtml(m, { inThread: true })).join('')}
+        </div>
+        <div class="composer">
+          <div class="line">
+            <input type="text" id="thread-input" placeholder="${esc(t('threadReplyHint'))}" autocomplete="off">
+            <button class="btn primary" data-act="send-reply">${ICONS.send}${esc(t('send'))}</button>
+          </div>
+        </div>
+      </div>
     </div>`;
 }
 
@@ -918,6 +972,68 @@ function modalShell(title, body, foot) {
 // ----------------------------------------------------------------- actions
 const uid = (p) => p + Math.random().toString(36).slice(2, 8);
 
+const ACCEPT = { image: 'image/*', audio: 'audio/*', file: '' };
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+
+/** Opens the real file picker, then "uploads" with a progress bar. */
+function pickAndUpload(kind) {
+  const input = document.getElementById('file-input');
+  input.accept = ACCEPT[kind];
+  input.onchange = () => {
+    const file = input.files && input.files[0];
+    input.value = '';
+    if (file) uploadFile(file, kind);
+  };
+  input.click();
+}
+
+function uploadFile(file, kind) {
+  if (file.size > MAX_UPLOAD_BYTES) {
+    state.upload = { name: file.name, error: t('fileTooLarge', { limit: '25 MB' }) };
+    render();
+    return;
+  }
+  state.upload = { name: file.name, progress: 0, kind };
+  render();
+
+  const reader = new FileReader();
+  reader.onerror = () => {
+    state.upload = { name: file.name, error: t('uploadFailed'), retry: () => uploadFile(file, kind) };
+    render();
+  };
+  reader.onload = () => {
+    let step = 0;
+    const timer = setInterval(() => {
+      step += 1;
+      state.upload = { name: file.name, progress: step / 5, kind };
+      render();
+      if (step === 5) {
+        clearInterval(timer);
+        state.upload = null;
+        sendMessage(kind, {
+          text: '',
+          att: {
+            name: file.name,
+            mime: file.type || 'application/octet-stream',
+            size: readableBytes(file.size),
+            url: reader.result,
+          },
+        });
+      }
+    }, 120);
+  };
+  reader.readAsDataURL(file);
+}
+
+function readableBytes(bytes) {
+  if (!bytes) return '';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let size = bytes;
+  let i = 0;
+  while (size >= 1024 && i < units.length - 1) { size /= 1024; i += 1; }
+  return `${size.toFixed(size < 10 && i > 0 ? 1 : 0)} ${units[i]}`;
+}
+
 function sendMessage(type, payload) {
   const input = document.getElementById('composer-input');
   const text = payload && payload.text !== undefined ? payload.text : (input ? input.value.trim() : '');
@@ -926,6 +1042,15 @@ function sendMessage(type, payload) {
     id: uid('m'), ch: state.channel, from: state.me, at: new Date(),
     type: type || 'text', text, reactions: {}, ...(payload || {}),
   });
+  // A reply tells the author of the root message, in their own language.
+  const replyTo = payload && payload.replyTo ? byId(DB.messages, payload.replyTo) : null;
+  if (replyTo && replyTo.from !== state.me) {
+    const lang = byId(DB.users, replyTo.from).locale;
+    const copy = (window.I18N[lang] || window.I18N.en).repliedToYou
+      .split('{name}').join(userName(state.me));
+    notify(replyTo.from, 'message', copy, text || (payload.att ? payload.att.name : ''),
+      { view: 'chat', channel: state.channel, thread: replyTo.id });
+  }
   // Mentions notify the people named, in their own language (like the
   // Cloud Functions do in production).
   for (const target of parseMentions(text || '')) {
@@ -956,12 +1081,26 @@ function handle(act, el) {
     case 'channel': state.channel = id; break;
     case 'send': sendMessage('text'); return;
     case 'attach':
-      if (id === 'image') sendMessage('image', { text: '', att: { name: 'photo.jpg', mime: 'image/jpeg', size: '480 KB' } });
-      else if (id === 'file') sendMessage('file', { text: '', att: { name: 'ctg-document.pdf', mime: 'application/pdf', size: '182 KB' } });
-      else if (id === 'audio') sendMessage('audio', { text: '', att: { name: 'voice-note.m4a', mime: 'audio/mp4', size: '320 KB', duration: '0:34' } });
+      if (id === 'image' || id === 'file' || id === 'audio') { pickAndUpload(id); return; }
       else if (id === 'link') sendMessage('link', { text: 'CTG website', url: 'https://ctg.ma' });
       else state.modal = taskPickerModal;
       break;
+    case 'retry-upload': {
+      const retry = state.upload && state.upload.retry;
+      state.upload = null;
+      if (retry) retry();
+      return;
+    }
+    case 'dismiss-upload': state.upload = null; break;
+    case 'open-thread': state.thread = id; break;
+    case 'close-thread': state.thread = null; break;
+    case 'send-reply': {
+      const box = document.getElementById('thread-input');
+      const value = box ? box.value.trim() : '';
+      if (!value) return;
+      sendMessage('text', { text: value, replyTo: state.thread });
+      return;
+    }
     case 'pick-task':
       state.modal = null;
       sendMessage('taskRef', { text: '', taskId: id });
@@ -1104,6 +1243,7 @@ function handle(act, el) {
       state.view = n.route.view;
       if (n.route.channel) state.channel = n.route.channel;
       if (n.route.task) state.taskOpen = n.route.task;
+      state.thread = n.route.thread || null;
       break;
     }
     case 'open-hit': {
@@ -1187,6 +1327,11 @@ function afterRender() {
       again.setSelectionRange(pos, pos);
     };
   }
+  const threadBox = document.getElementById('thread-input');
+  if (threadBox) {
+    threadBox.onkeydown = (e) => { if (e.key === 'Enter') handle('send-reply', e.target); };
+    threadBox.focus();
+  }
   const composer = document.getElementById('composer-input');
   if (composer) {
     if (state.pendingMention) {
@@ -1262,6 +1407,7 @@ document.addEventListener('input', (e) => {
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     if (state.modal) { state.modal = null; render(); }
+    else if (state.thread) { state.thread = null; render(); }
     else if (state.taskOpen) { state.taskOpen = null; render(); }
   }
 });

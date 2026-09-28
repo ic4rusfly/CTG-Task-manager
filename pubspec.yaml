@@ -22,12 +22,14 @@ dependencies:
   firebase_core: ^3.6.0
   firebase_auth: ^5.3.1
   cloud_firestore: ^5.4.3
+  firebase_storage: ^12.3.2
 
-  # Phase 2 (media upload + push) - uncomment when those features land.
-  # firebase_storage: ^12.3.2
+  # File picking for chat attachments. Works on mobile, web and desktop and
+  # hands back bytes, so the same upload path serves every platform.
+  file_picker: ^8.1.2
+
+  # Phase 3 (push + link previews) - uncomment when those features land.
   # firebase_messaging: ^15.1.3
-  # image_picker: ^1.1.2
-  # file_picker: ^8.1.2
   # cached_network_image: ^3.4.1
   # url_launcher: ^6.3.0
 

@@ -100,6 +100,38 @@ export const onMessageCreate = onDocumentCreated(
     const actor = await displayName(senderId);
 
     const mentions = (message.mentions as string[] | undefined) ?? [];
+    const replyToId = message.replyToId as string | undefined;
+
+    // A thread reply only notifies the people involved in that thread, not the
+    // whole channel: the root author, plus anyone mentioned in the reply.
+    if (replyToId) {
+      const rootSnap = await db
+        .collection('channels')
+        .doc(channelId)
+        .collection('messages')
+        .doc(replyToId)
+        .get();
+      const rootAuthor = rootSnap.get('senderId') as string | undefined;
+      const threadTargets = [...new Set([...(rootAuthor ? [rootAuthor] : []), ...mentions])]
+        .filter((uid) => uid !== senderId && memberIds.includes(uid));
+      if (threadTargets.length === 0) return;
+      const threadRecipients = await loadRecipients(threadTargets);
+      await fanOut(threadRecipients, (recipient) => {
+        const locale = recipient.locale;
+        const text =
+          (message.text as string | undefined)?.trim() || t('attachmentFallback', locale);
+        return {
+          kind: mentions.includes(recipient.uid) ? 'mention' : 'message',
+          title: mentions.includes(recipient.uid)
+            ? t('mentionTitle', locale)
+            : t('threadReplyTitle', locale, { actor }),
+          body: text,
+          route: `/chat/${channelId}/thread/${replyToId}`,
+        };
+      });
+      return;
+    }
+
     const targets = memberIds.filter((uid) => uid !== senderId);
     const recipients = (await loadRecipients(targets)).filter(
       (recipient) => mentions.includes(recipient.uid) || !recipient.muted.includes(channelId)

@@ -192,5 +192,15 @@
   "assignedYouTask": "{name} vous a assigné {key}",
   "inChannel": "dans {channel}",
   "resultsCount": "{count, plural, =0{Aucun message} =1{1 message} other{{count} messages}}",
-  "openConversation": "Ouvrir la conversation"
+  "openConversation": "Ouvrir la conversation",
+  "thread": "Fil de discussion",
+  "replyInThread": "Répondre dans le fil",
+  "repliesCount": "{count, plural, =0{Aucune réponse} =1{1 réponse} other{{count} réponses}}",
+  "repliedToYou": "{name} a répondu dans votre fil",
+  "threadReplyHint": "Répondre au fil",
+  "uploading": "Téléversement",
+  "uploadFailed": "Échec du téléversement",
+  "retry": "Réessayer",
+  "fileTooLarge": "Le fichier dépasse {limit}",
+  "openFile": "Ouvrir"
 }

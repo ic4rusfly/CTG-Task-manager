@@ -34,6 +34,8 @@
 
   const messages = [
     { id: 'm1', ch: 'c_general', from: 'u1', at: ago(360), type: 'text', text: 'Good morning everyone. Reminder: the CTG Day planning review is on Thursday.', reactions: { ack: ['u2', 'u5'], agree: ['u3'] } },
+    { id: 'm1r1', ch: 'c_general', from: 'u3', at: ago(330), type: 'text', replyTo: 'm1', text: 'Thursday works for me. Can we start at 15:00?', reactions: {} },
+    { id: 'm1r2', ch: 'c_general', from: 'u1', at: ago(310), type: 'text', replyTo: 'm1', text: 'Yes, 15:00 in the small meeting room.', reactions: {} },
     { id: 'm2', ch: 'c_general', from: 'u5', at: ago(300), type: 'image', text: 'The new poster draft is ready, feedback welcome.', att: { name: 'ctg-day-poster.png', mime: 'image/png', size: '842 KB' }, reactions: {} },
     { id: 'm3', ch: 'c_general', from: 'u2', at: ago(240), type: 'taskRef', text: '', taskId: 'k3', reactions: {} },
     { id: 'm4', ch: 'c_general', from: 'u4', at: ago(180), type: 'file', text: 'Venue confirmation attached.', att: { name: 'venue-contract.pdf', mime: 'application/pdf', size: '231 KB' }, reactions: {} },

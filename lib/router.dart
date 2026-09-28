@@ -8,6 +8,7 @@ import 'features/auth/login_screen.dart';
 import 'features/chat/chat_home_screen.dart';
 import 'features/directory/directory_screen.dart';
 import 'features/chat/message_search_screen.dart';
+import 'features/chat/thread_screen.dart';
 import 'features/home/home_shell.dart';
 import 'features/notifications/notifications_screen.dart';
 import 'features/profile/profile_screen.dart';
@@ -36,6 +37,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(path: '/settings', builder: (context, state) => const SettingsScreen()),
       GoRoute(path: '/search', builder: (context, state) => const MessageSearchScreen()),
+      GoRoute(
+        path: '/chat/:channelId/thread/:messageId',
+        builder: (context, state) => ThreadScreen(
+          channelId: state.pathParameters['channelId']!,
+          rootId: state.pathParameters['messageId']!,
+        ),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
             HomeShell(navigationShell: navigationShell),
