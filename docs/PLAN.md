@@ -199,7 +199,7 @@ notifications/{uid}/items/{id}   kind, title, body, route, read, createdAt
 | Phase | Duration | Deliverable |
 |---|---|---|
 | **0. Foundations** *(done — this commit)* | — | Project skeleton, routing, theming, i18n ar/fr/en, models, repository interfaces, mock data, all screens clickable |
-| **1. Firebase wiring** | 1 week | Real project, Auth (email + Google), Firestore repos replacing mocks, security rules, seed script |
+| **1. Firebase wiring** *(rules, Functions, seed and CI landed)* | 1 week | Real project, Auth (email + Google), Firestore repos replacing mocks, security rules, seed script |
 | **2. Chat** | 1.5 weeks | Channels, DMs, media upload (image/file/audio/voice note), reactions, threads, unread & read receipts, search |
 | **3. Tasks** | 1.5 weeks | Projects, kanban DnD, filters, task detail, comments, checklist, progress, attachments, activity log |
 | **4. Assignment & admin** | 1 week | Group assignment (shared vs per-person clone), member management, teams, roles/claims |
@@ -230,6 +230,7 @@ Blaze plan, realistically **$0–25/month**: Firestore reads dominate (chat stre
 
 - `docs/PLAN.md` — this document.
 - Flutter app source (`lib/`) — full structure, models, repository interfaces, **mock** repositories with realistic CTG seed data, all v1 screens, and complete ar/fr/en translations. Runs with `flutter run` (no Firebase needed yet).
-- `firebase/` — Firestore rules, indexes and Storage rules to deploy in phase 1.
+- `firebase/` — Firestore rules, indexes and Storage rules; `functions/` (TypeScript Cloud Functions, type-checked in CI); `seed/` (project bootstrap script); `client_reference/` (Firestore repositories to drop into `lib/data/firebase/`).
+- `test/` — unit and widget tests; `.github/workflows/ci.yml` — analyze, test, web build, translation and no-emoji gates, Functions type-check.
 - `prototype/` — a self-contained clickable HTML mock of the same UI (used for the live preview in this environment, where the Flutter SDK cannot be installed). It reads the same ARB translations as the app.
 - `tool/` — `gen_l10n.py` (ARB to Dart) and `gen_prototype_i18n.py` (ARB to prototype).

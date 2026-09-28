@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  flutter:
+    name: Analyze, test, build web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.x'
+          channel: stable
+          cache: true
+
+      - name: Check translations are complete
+        run: |
+          python3 tool/gen_l10n.py
+          python3 tool/gen_prototype_i18n.py
+          git diff --exit-code lib/l10n/app_localizations.dart prototype/i18n.js \
+            || (echo "::error::Generated localisations are stale - run tool/gen_l10n.py" && exit 1)
+
+      - name: No emoji in source or copy
+        run: |
+          if grep -rPl "[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}]" lib prototype docs README.md; then
+            echo "::error::Emoji found - see the design rules in README.md"
+            exit 1
+          fi
+
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+      - run: flutter build web --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: build/web
+
+  functions:
+    name: Type-check Cloud Functions
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: firebase/functions
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: firebase/functions/package-lock.json
+      - run: npm ci || npm install
+      - run: npm run typecheck

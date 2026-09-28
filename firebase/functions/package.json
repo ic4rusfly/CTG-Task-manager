@@ -1,0 +1,21 @@
+{
+  "name": "ctg-hub-functions",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CTG Hub Cloud Functions: notifications, group assignment, onboarding.",
+  "main": "lib/index.js",
+  "engines": { "node": "20" },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "serve": "npm run build && firebase emulators:start --only functions,firestore",
+    "deploy": "npm run build && firebase deploy --only functions"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.3.0",
+    "firebase-functions": "^5.0.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
+}

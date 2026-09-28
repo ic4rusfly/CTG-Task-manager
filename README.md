@@ -16,7 +16,11 @@ Built with **Flutter + Riverpod + go_router**, backed by **Firebase** (phase 1).
 | `lib/` | The Flutter app: models, repository interfaces, mock data layer, all v1 screens, ar/fr/en translations |
 | `docs/PLAN.md` | Scope, architecture, Firestore data model, security rules, i18n plan, 9-week roadmap, costs, risks |
 | `firebase/` | Firestore rules + indexes, Storage rules, `firebase.json` |
-| `firebase/client_reference/` | Firestore repository implementations to drop in during phase 1 (not compiled yet) |
+| `firebase/client_reference/` | Firestore + Auth repository implementations to drop in during phase 1 (not compiled yet) |
+| `firebase/functions/` | Cloud Functions (TypeScript): notifications in each recipient's language, group assignment, onboarding, due-soon cron |
+| `firebase/seed/` | One-shot script that seeds a fresh project with members, teams, `#general` and the CTG project |
+| `test/` | Unit tests (models, mock repositories, localisation) and widget tests (task card, RTL, French) |
+| `.github/workflows/ci.yml` | CI: translation + no-emoji checks, `flutter analyze`, `flutter test`, web build, Functions type-check |
 | `prototype/` | A dependency-free clickable HTML prototype of the same UI (see below) |
 | `tool/` | `gen_l10n.py` (ARB → Dart strings) and `gen_prototype_i18n.py` (ARB → prototype) |
 
@@ -74,6 +78,29 @@ manage members as admin, and switch language (including RTL Arabic) and theme.
 # 1. edit lib/l10n/app_en.arb (+ the fr and ar files)
 python3 tool/gen_l10n.py            # regenerates lib/l10n/app_localizations.dart
 python3 tool/gen_prototype_i18n.py  # keeps the prototype in sync
+```
+
+## Backend (phase 1)
+
+```bash
+cd firebase/functions && npm install && npm run typecheck   # Cloud Functions
+cd ../seed && npm install && node seed.js --emulator        # seed the emulator
+firebase emulators:start                                    # auth + firestore + functions + storage
+firebase deploy --only firestore:rules,firestore:indexes,storage,functions
+```
+
+Functions shipped: `onUserCreate` (claims + auto-join `#general`), `onUserRoleChange`
+(keeps custom claims in sync), `onMessageCreate` (FCM fan-out, muted channels respected,
+copy built in each recipient's `locale`), `onTaskWrite` (assignment + status notifications and
+an activity trail), `dueSoonScheduler` (hourly, 24h horizon), `onEventCreate` (invites),
+`assignTaskGroup` (transactional group assignment with sequential `CTG-###` keys),
+`registerDevice`.
+
+## Tests
+
+```bash
+flutter test                     # unit + widget
+cd firebase/functions && npm run typecheck
 ```
 
 ## Roadmap at a glance

@@ -1,0 +1,9 @@
+{
+  "name": "ctg-hub-seed",
+  "version": "0.1.0",
+  "private": true,
+  "description": "One-shot seeding script for a fresh CTG Hub Firebase project.",
+  "main": "seed.js",
+  "scripts": { "seed": "node seed.js", "seed:emulator": "node seed.js --emulator" },
+  "dependencies": { "firebase-admin": "^12.3.0" }
+}
