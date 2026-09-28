@@ -261,5 +261,15 @@
       }
     }
   },
-  "openFile": "Open"
+  "openFile": "Open",
+  "pushNotifications": "Push notifications",
+  "pushOnThisDevice": "Receive alerts on this device",
+  "pushBlocked": "Notifications are blocked in your system settings",
+  "pushUnsupported": "Push is not available on this platform",
+  "deviceRegistered": "This device is registered",
+  "open": "Open",
+  "errorTitle": "Something went wrong",
+  "errorBody": "We could not load this. Check your connection and try again.",
+  "loading": "Loading",
+  "signedOut": "You are signed out"
 }

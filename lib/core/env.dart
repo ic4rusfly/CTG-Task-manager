@@ -18,5 +18,10 @@ class Env {
   static const emulatorHost =
       String.fromEnvironment('EMULATOR_HOST', defaultValue: 'localhost');
 
+  /// Web push needs the project's VAPID public key:
+  ///   flutter run -d chrome --dart-define=BACKEND=firebase \
+  ///               --dart-define=VAPID_KEY=BFx...
+  static const vapidKey = String.fromEnvironment('VAPID_KEY', defaultValue: '');
+
   static bool get useFirebase => backend == 'firebase';
 }

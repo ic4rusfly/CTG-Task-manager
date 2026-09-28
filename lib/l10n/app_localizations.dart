@@ -174,6 +174,16 @@ class AppLocalizations {
   String get uploadFailed => _get('uploadFailed');
   String get retry => _get('retry');
   String get openFile => _get('openFile');
+  String get pushNotifications => _get('pushNotifications');
+  String get pushOnThisDevice => _get('pushOnThisDevice');
+  String get pushBlocked => _get('pushBlocked');
+  String get pushUnsupported => _get('pushUnsupported');
+  String get deviceRegistered => _get('deviceRegistered');
+  String get open => _get('open');
+  String get errorTitle => _get('errorTitle');
+  String get errorBody => _get('errorBody');
+  String get loading => _get('loading');
+  String get signedOut => _get('signedOut');
 
   String minutesAgo(int count) {
     var s = _get('minutesAgo');
@@ -441,6 +451,16 @@ const _strings = <String, Map<String, String>>{
     'retry': 'Retry',
     'fileTooLarge': 'File is larger than {limit}',
     'openFile': 'Open',
+    'pushNotifications': 'Push notifications',
+    'pushOnThisDevice': 'Receive alerts on this device',
+    'pushBlocked': 'Notifications are blocked in your system settings',
+    'pushUnsupported': 'Push is not available on this platform',
+    'deviceRegistered': 'This device is registered',
+    'open': 'Open',
+    'errorTitle': 'Something went wrong',
+    'errorBody': 'We could not load this. Check your connection and try again.',
+    'loading': 'Loading',
+    'signedOut': 'You are signed out',
   },
   'fr': <String, String>{
     'appName': 'CTG Hub',
@@ -604,6 +624,16 @@ const _strings = <String, Map<String, String>>{
     'retry': 'Réessayer',
     'fileTooLarge': 'Le fichier dépasse {limit}',
     'openFile': 'Ouvrir',
+    'pushNotifications': 'Notifications push',
+    'pushOnThisDevice': 'Recevoir les alertes sur cet appareil',
+    'pushBlocked': 'Les notifications sont bloquées dans les réglages du système',
+    'pushUnsupported': 'Le push n\'est pas disponible sur cette plateforme',
+    'deviceRegistered': 'Cet appareil est enregistré',
+    'open': 'Ouvrir',
+    'errorTitle': 'Une erreur est survenue',
+    'errorBody': 'Chargement impossible. Vérifiez votre connexion et réessayez.',
+    'loading': 'Chargement',
+    'signedOut': 'Vous êtes déconnecté',
   },
   'ar': <String, String>{
     'appName': 'مركز CTG',
@@ -767,5 +797,15 @@ const _strings = <String, Map<String, String>>{
     'retry': 'إعادة المحاولة',
     'fileTooLarge': 'حجم الملف أكبر من {limit}',
     'openFile': 'فتح',
+    'pushNotifications': 'الإشعارات الفورية',
+    'pushOnThisDevice': 'استقبال التنبيهات على هذا الجهاز',
+    'pushBlocked': 'الإشعارات محظورة في إعدادات النظام',
+    'pushUnsupported': 'الإشعارات الفورية غير متاحة على هذه المنصة',
+    'deviceRegistered': 'تم تسجيل هذا الجهاز',
+    'open': 'فتح',
+    'errorTitle': 'حدث خطأ ما',
+    'errorBody': 'تعذر التحميل. تحقق من الاتصال وحاول مرة أخرى.',
+    'loading': 'جارٍ التحميل',
+    'signedOut': 'تم تسجيل خروجك',
   },
 };

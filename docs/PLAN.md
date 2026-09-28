@@ -204,7 +204,7 @@ notifications/{uid}/items/{id}   kind, title, body, route, read, createdAt
 | **3. Tasks** | 1.5 weeks | Projects, kanban DnD, filters, task detail, comments, checklist, progress, attachments, activity log |
 | **4. Assignment & admin** | 1 week | Group assignment (shared vs per-person clone), member management, teams, roles/claims |
 | **5. Agenda** | 1 week | Month/week/list views, events, recurrence, RSVP, task due dates merged, reminders |
-| **6. Notifications** *(in-app centre landed, FCM pending)* | 0.5 week | FCM + Cloud Functions, per-recipient-language payloads, in-app notification center, mute settings |
+| **6. Notifications** *(in-app centre and FCM registration landed)* | 0.5 week | FCM + Cloud Functions, per-recipient-language payloads, in-app notification center, mute settings |
 | **7. Polish & release** | 1 week | Empty/error/loading states, a11y, dark mode, responsive web/desktop, analytics & Crashlytics, tests, CI (GitHub Actions), Play/App Store + Firebase Hosting |
 
 **Total ≈ 8–9 weeks** for one full-time Flutter dev (plus ~1 week of part-time backend/Functions work that can overlap).

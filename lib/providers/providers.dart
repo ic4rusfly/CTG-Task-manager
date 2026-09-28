@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/mock/mock_db.dart';
 import '../data/mock/mock_repositories.dart';
 import '../domain/models/models.dart';
+import '../domain/push_service.dart';
 import '../domain/repositories/repositories.dart';
 
 /// ---------------------------------------------------------------------------
@@ -48,6 +49,27 @@ final taskRepositoryProvider = Provider<TaskRepository>(
 
 final agendaRepositoryProvider = Provider<AgendaRepository>(
   (ref) => MockAgendaRepository(ref.watch(mockDbProvider)),
+);
+
+/// Device push: a local stand-in by default, FCM with
+/// `--dart-define=BACKEND=firebase`.
+final pushServiceProvider = Provider<PushService>(
+  (ref) => MockPushService(ref.watch(mockDbProvider)),
+);
+
+/// Foreground notifications, surfaced by the app as an in-app banner.
+final pushMessagesProvider = StreamProvider<PushMessage>(
+  (ref) => ref.watch(pushServiceProvider).foregroundMessages,
+);
+
+/// Routes to open because a notification was tapped.
+final pushOpenedRouteProvider = StreamProvider<String>(
+  (ref) => ref.watch(pushServiceProvider).openedRoutes,
+);
+
+/// Permission state shown in Settings; refreshed after registering.
+final pushPermissionProvider = FutureProvider<PushPermission>(
+  (ref) => ref.watch(pushServiceProvider).status(),
 );
 
 /// Attachment storage: in-memory by default, Cloud Storage with

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import '../../l10n/app_localizations.dart';
 import '../../domain/models/models.dart';
+import '../../domain/push_service.dart';
 import '../../domain/repositories/repositories.dart';
 import 'mock_db.dart';
 
@@ -669,4 +670,66 @@ class MockMediaRepository implements MediaRepository {
 
   @override
   Future<void> delete(String url) async => _db.blobs.remove(url);
+}
+
+/// Stand-in for FCM.
+///
+/// It grants permission the first time it is asked, keeps a fake token and
+/// replays every notification written for the signed-in member as a
+/// foreground message, so the in-app banner can be demoed without a backend.
+class MockPushService implements PushService {
+  MockPushService(this._db);
+
+  final MockDb _db;
+  final _messages = StreamController<PushMessage>.broadcast();
+  final _opened = StreamController<String>.broadcast();
+
+  StreamSubscription<List<AppNotification>>? _sub;
+  PushPermission _permission = PushPermission.notDetermined;
+  String? _token;
+  int _seen = 0;
+
+  @override
+  Future<PushPermission> status() async => _permission;
+
+  @override
+  Future<PushPermission> register(String uid) async {
+    _permission = PushPermission.granted;
+    _token = 'mock-device-$uid';
+    _seen = (_db.notifications[uid] ?? const <AppNotification>[]).length;
+    await _sub?.cancel();
+    _sub = _db.watchNotifications(uid).listen((items) {
+      if (items.length <= _seen) {
+        _seen = items.length;
+        return;
+      }
+      for (final n in items.skip(_seen)) {
+        _messages.add(PushMessage(
+          title: n.title,
+          body: n.body,
+          route: n.route,
+          kind: n.kind.name,
+        ));
+      }
+      _seen = items.length;
+    });
+    return _permission;
+  }
+
+  @override
+  Future<void> unregister(String uid) async {
+    await _sub?.cancel();
+    _sub = null;
+    _token = null;
+    _permission = PushPermission.notDetermined;
+  }
+
+  @override
+  Stream<PushMessage> get foregroundMessages => _messages.stream;
+
+  @override
+  Stream<String> get openedRoutes => _opened.stream;
+
+  @override
+  Future<String?> currentToken() async => _token;
 }

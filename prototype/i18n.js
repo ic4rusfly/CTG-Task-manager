@@ -161,7 +161,17 @@ window.I18N = {
     "uploadFailed": "Upload failed",
     "retry": "Retry",
     "fileTooLarge": "File is larger than {limit}",
-    "openFile": "Open"
+    "openFile": "Open",
+    "pushNotifications": "Push notifications",
+    "pushOnThisDevice": "Receive alerts on this device",
+    "pushBlocked": "Notifications are blocked in your system settings",
+    "pushUnsupported": "Push is not available on this platform",
+    "deviceRegistered": "This device is registered",
+    "open": "Open",
+    "errorTitle": "Something went wrong",
+    "errorBody": "We could not load this. Check your connection and try again.",
+    "loading": "Loading",
+    "signedOut": "You are signed out"
   },
   "fr": {
     "appName": "CTG Hub",
@@ -324,7 +334,17 @@ window.I18N = {
     "uploadFailed": "Échec du téléversement",
     "retry": "Réessayer",
     "fileTooLarge": "Le fichier dépasse {limit}",
-    "openFile": "Ouvrir"
+    "openFile": "Ouvrir",
+    "pushNotifications": "Notifications push",
+    "pushOnThisDevice": "Recevoir les alertes sur cet appareil",
+    "pushBlocked": "Les notifications sont bloquées dans les réglages du système",
+    "pushUnsupported": "Le push n'est pas disponible sur cette plateforme",
+    "deviceRegistered": "Cet appareil est enregistré",
+    "open": "Ouvrir",
+    "errorTitle": "Une erreur est survenue",
+    "errorBody": "Chargement impossible. Vérifiez votre connexion et réessayez.",
+    "loading": "Chargement",
+    "signedOut": "Vous êtes déconnecté"
   },
   "ar": {
     "appName": "مركز CTG",
@@ -487,6 +507,16 @@ window.I18N = {
     "uploadFailed": "فشل الرفع",
     "retry": "إعادة المحاولة",
     "fileTooLarge": "حجم الملف أكبر من {limit}",
-    "openFile": "فتح"
+    "openFile": "فتح",
+    "pushNotifications": "الإشعارات الفورية",
+    "pushOnThisDevice": "استقبال التنبيهات على هذا الجهاز",
+    "pushBlocked": "الإشعارات محظورة في إعدادات النظام",
+    "pushUnsupported": "الإشعارات الفورية غير متاحة على هذه المنصة",
+    "deviceRegistered": "تم تسجيل هذا الجهاز",
+    "open": "فتح",
+    "errorTitle": "حدث خطأ ما",
+    "errorBody": "تعذر التحميل. تحقق من الاتصال وحاول مرة أخرى.",
+    "loading": "جارٍ التحميل",
+    "signedOut": "تم تسجيل خروجك"
   }
 };

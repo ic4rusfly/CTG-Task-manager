@@ -202,5 +202,15 @@
   "uploadFailed": "Échec du téléversement",
   "retry": "Réessayer",
   "fileTooLarge": "Le fichier dépasse {limit}",
-  "openFile": "Ouvrir"
+  "openFile": "Ouvrir",
+  "pushNotifications": "Notifications push",
+  "pushOnThisDevice": "Recevoir les alertes sur cet appareil",
+  "pushBlocked": "Les notifications sont bloquées dans les réglages du système",
+  "pushUnsupported": "Le push n'est pas disponible sur cette plateforme",
+  "deviceRegistered": "Cet appareil est enregistré",
+  "open": "Ouvrir",
+  "errorTitle": "Une erreur est survenue",
+  "errorBody": "Chargement impossible. Vérifiez votre connexion et réessayez.",
+  "loading": "Chargement",
+  "signedOut": "Vous êtes déconnecté"
 }

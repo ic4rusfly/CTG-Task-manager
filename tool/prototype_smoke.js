@@ -33,6 +33,13 @@ const ok = (condition, message) => {
   if (!condition) failures.push(message);
 };
 const fire = (el) => el.dispatchEvent(new w.Event('click', { bubbles: true }));
+/** Checkboxes in the prototype are driven by the change event. */
+const toggle = (selector) => {
+  const el = doc.querySelector(selector);
+  if (!el) throw new Error(`missing element: ${selector}`);
+  el.checked = !el.checked;
+  el.dispatchEvent(new w.Event('change', { bubbles: true }));
+};
 const click = (selector) => {
   const el = doc.querySelector(selector);
   if (!el) throw new Error(`missing element: ${selector}`);
@@ -40,9 +47,14 @@ const click = (selector) => {
 };
 
 // --------------------------------------------------------------- sign in ---
-const loginButton =
-  doc.querySelector('[data-act="login"]') || doc.querySelector('button[type="submit"]');
-if (loginButton) fire(loginButton);
+ok(!!doc.querySelector('.login-card'), 'the app starts on the sign-in screen');
+ok(!doc.querySelector('.nav-item'), 'no shell before signing in');
+doc.getElementById('login-email').value = 'nobody@ctg.ma';
+click('[data-act="login"]');
+ok(!!doc.querySelector('.login-card') && /login-error|maroon/.test(doc.body.innerHTML),
+  'an unknown address shows an inline error');
+doc.getElementById('login-email').value = 'yasmine@ctg.ma';
+click('[data-act="login"]');
 ok(!!doc.querySelector('.nav-item'), 'app shell renders after sign in');
 
 // -------------------------------------------------------- notifications ----
@@ -141,6 +153,21 @@ async function uploadRun() {
 }
 
 uploadRun().then(() => {
+  // ----------------------------------------------------------------- push ----
+  click('.nav-item[data-id="settings"]');
+  const pushToggle = doc.querySelector('[data-act="toggle-push"]');
+  ok(!!pushToggle && pushToggle.checked, 'signing in registers the device for push');
+  click('[data-act="test-push"]');
+  ok(!!doc.querySelector('.toast'), 'a foreground notification shows an in-app banner');
+  click('[data-act="open-toast"]');
+  ok(!doc.querySelector('.toast'), 'opening the banner dismisses it');
+  ok(doc.querySelector('.nav-item.active').dataset.id === 'notifications',
+    'the banner routes to its target');
+  click('.nav-item[data-id="settings"]');
+  toggle('[data-act="toggle-push"]');
+  ok(!doc.querySelector('[data-act="toggle-push"]').checked, 'push can be turned off');
+  ok(!doc.querySelector('[data-act="test-push"]'), 'the test action disappears with push off');
+
   // --------------------------------------------------------- other views -----
   for (const view of ['tasks', 'agenda', 'members']) {
     click(`.nav-item[data-id="${view}"]`);
@@ -162,6 +189,11 @@ uploadRun().then(() => {
     !/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(doc.body.innerHTML),
     'no emoji in the rendered DOM'
   );
+
+  // ---------------------------------------------------------- sign out ------
+  click('.nav-item[data-id="settings"]');
+  click('[data-act="sign-out"]');
+  ok(!!doc.querySelector('.login-card'), 'sign out returns to the sign-in screen');
 
   console.log(failures.length ? `\nFAILURES: ${failures.length}` : '\nALL PASS');
   process.exit(failures.length ? 1 : 0);

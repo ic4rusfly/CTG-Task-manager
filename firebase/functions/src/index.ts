@@ -7,6 +7,8 @@
  *  dueSoonScheduler      hourly cron -> "due within 24h" reminders
  *  onEventCreate         agenda invite -> notifications
  *  assignTaskGroup       callable -> assign one task to many, or clone per person
+ *  registerDevice        callable -> store an FCM token for the signed-in member
+ *  unregisterDevice      callable -> drop an FCM token on sign-out
  *
  * Region: europe-west1 (closest to Morocco).
  */
@@ -374,6 +376,19 @@ export const registerDevice = onCall<{ token: string }>(async (request) => {
     .collection('users')
     .doc(request.auth.uid)
     .set({ fcmTokens: admin.firestore.FieldValue.arrayUnion(token) }, { merge: true });
+  return { ok: true };
+});
+
+/** Drops a device token, e.g. when a member signs out on that device. */
+export const unregisterDevice = onCall<{ token: string }>(async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in first.');
+  const token = request.data?.token;
+  if (!token) throw new HttpsError('invalid-argument', 'Missing token.');
+
+  await db
+    .collection('users')
+    .doc(request.auth.uid)
+    .set({ fcmTokens: admin.firestore.FieldValue.arrayRemove(token) }, { merge: true });
   return { ok: true };
 });
 

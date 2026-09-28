@@ -202,5 +202,15 @@
   "uploadFailed": "فشل الرفع",
   "retry": "إعادة المحاولة",
   "fileTooLarge": "حجم الملف أكبر من {limit}",
-  "openFile": "فتح"
+  "openFile": "فتح",
+  "pushNotifications": "الإشعارات الفورية",
+  "pushOnThisDevice": "استقبال التنبيهات على هذا الجهاز",
+  "pushBlocked": "الإشعارات محظورة في إعدادات النظام",
+  "pushUnsupported": "الإشعارات الفورية غير متاحة على هذه المنصة",
+  "deviceRegistered": "تم تسجيل هذا الجهاز",
+  "open": "فتح",
+  "errorTitle": "حدث خطأ ما",
+  "errorBody": "تعذر التحميل. تحقق من الاتصال وحاول مرة أخرى.",
+  "loading": "جارٍ التحميل",
+  "signedOut": "تم تسجيل خروجك"
 }

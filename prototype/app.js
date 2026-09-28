@@ -24,6 +24,10 @@ const state = {
   search: '',
   thread: null,
   upload: null,
+  signedIn: false,
+  push: false,
+  toast: null,
+  loginError: '',
 };
 
 function t(key, params) {
@@ -213,7 +217,15 @@ const unreadNotifications = () => myNotifications().filter((n) => !n.read).lengt
 
 function notify(uid, kind, title, body, route) {
   if (uid === state.me) return;
-  DB.notifications.push({ id: uid + Date.now() + Math.random(), uid, kind, title, body, route, read: false, at: new Date() });
+  const item = { id: uid + Date.now() + Math.random(), uid, kind, title, body, route, read: false, at: new Date() };
+  DB.notifications.push(item);
+}
+
+/** Demo helper: delivers a notification to the signed-in member. */
+function selfNotify(kind, title, body, route) {
+  const item = { id: 'self' + Date.now(), uid: state.me, kind, title, body, route, read: false, at: new Date() };
+  DB.notifications.push(item);
+  showToast(item);
 }
 
 // ------------------------------------------------------------ small pieces
@@ -239,11 +251,67 @@ function progressBar(value) {
   return `<div class="progress ${cls}"><div style="width:${value}%"></div></div>`;
 }
 
+/** In-app banner for a notification that lands while the app is open. */
+function toastHtml(toast) {
+  return `
+    <div class="toast">
+      ${ICONS.bell}
+      <span class="grow">
+        <div><b>${esc(toast.title)}</b></div>
+        <div class="small muted">${esc(toast.body)}</div>
+      </span>
+      <button class="btn small" data-act="open-toast">${esc(t('open'))}</button>
+      <button class="btn icon small ghost" data-act="close-toast">${ICONS.close}</button>
+    </div>`;
+}
+
+let toastTimer = null;
+function showToast(notification) {
+  if (!state.push) return;
+  state.toast = notification;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    state.toast = null;
+    render();
+  }, 6000);
+}
+
+// ------------------------------------------------------------------- login
+function loginView() {
+  return `
+    <div class="login">
+      <div class="login-card">
+        <div class="brand" style="margin-bottom:18px">
+          <span class="mark">CTG</span>
+          <span class="col"><div class="name">${esc(t('appName'))}</div>
+            <div class="sub">${esc(t('tagline'))}</div></span>
+        </div>
+        <label class="small muted" for="login-email">${esc(t('email'))}</label>
+        <input id="login-email" type="email" value="yasmine@ctg.ma" autocomplete="username">
+        <label class="small muted" for="login-password">${esc(t('password'))}</label>
+        <input id="login-password" type="password" value="demo1234" autocomplete="current-password">
+        ${state.loginError ? `<div class="small" style="color:var(--maroon);margin:8px 0">${esc(state.loginError)}</div>` : ''}
+        <button class="btn primary" style="width:100%;margin-top:12px" data-act="login">${esc(t('signIn'))}</button>
+        <div class="section-title">${esc(t('demoSignInHint'))}</div>
+        <div class="wrap">
+          ${DB.users.filter((u) => u.active !== false).map((u) => `
+            <button class="btn small" data-act="login-as" data-id="${u.id}">${esc(u.name)}</button>`).join('')}
+        </div>
+      </div>
+    </div>`;
+}
+
 // ------------------------------------------------------------------- shell
 function render() {
   document.documentElement.dir = state.lang === 'ar' ? 'rtl' : 'ltr';
   document.documentElement.lang = state.lang;
   document.documentElement.dataset.theme = state.theme;
+
+  if (!state.signedIn) {
+    document.getElementById('app').innerHTML = loginView();
+    afterRender();
+    return;
+  }
 
   const nav = [
     ['chat', 'chat'], ['tasks', 'tasks'], ['agenda', 'agenda'],
@@ -280,6 +348,7 @@ function render() {
     </section>
     ${state.taskOpen ? taskPanel(byId(DB.tasks, state.taskOpen)) : ''}
     ${state.thread ? threadPanel() : ''}
+    ${state.toast ? toastHtml(state.toast) : ''}
     ${state.modal ? state.modal() : ''}
   `;
   afterRender();
@@ -854,6 +923,18 @@ function settingsView() {
           </label>`).join('')}
       </div>
 
+      <div class="section-title">${esc(t('notifications'))}</div>
+      <div class="card">
+        <label class="row" style="padding:7px 0">
+          <input type="checkbox" ${state.push ? 'checked' : ''} data-act="toggle-push">
+          <span class="grow">
+            <b>${esc(t('pushNotifications'))}</b>
+            <div class="small muted">${esc(state.push ? t('deviceRegistered') : t('pushOnThisDevice'))}</div>
+          </span>
+        </label>
+        ${state.push ? `<button class="btn small" data-act="test-push">${ICONS.bell}${esc(t('notificationCenter'))}</button>` : ''}
+      </div>
+
       <div class="section-title">${esc(t('account'))}</div>
       <div class="card">
         <div class="row">
@@ -863,6 +944,7 @@ function settingsView() {
             <div class="small muted">${esc(me().email)} - ${esc(t('role' + me().role[0].toUpperCase() + me().role.slice(1)))}</div>
           </div>
           <button class="btn" data-act="switch-user">${esc(t('signIn'))}</button>
+          <button class="btn" data-act="sign-out">${esc(t('signOut'))}</button>
         </div>
       </div>
     </div>`;
@@ -1034,6 +1116,17 @@ function readableBytes(bytes) {
   return `${size.toFixed(size < 10 && i > 0 ? 1 : 0)} ${units[i]}`;
 }
 
+function signIn(uid) {
+  state.signedIn = true;
+  state.me = uid;
+  state.lang = byId(DB.users, uid).locale;
+  state.loginError = '';
+  state.view = 'chat';
+  // Registering a device is what turns on the in-app banner, exactly like the
+  // Flutter app asking for push permission after sign-in.
+  state.push = true;
+}
+
 function sendMessage(type, payload) {
   const input = document.getElementById('composer-input');
   const text = payload && payload.text !== undefined ? payload.text : (input ? input.value.trim() : '');
@@ -1073,8 +1166,7 @@ function handle(act, el) {
     case 'theme-set': state.theme = id; break;
     case 'switch-user': state.modal = userModal; break;
     case 'pick-user':
-      state.me = id;
-      state.lang = byId(DB.users, id).locale;
+      signIn(id);
       state.modal = null;
       if (state.view === 'admin' && !canAssign()) state.view = 'chat';
       break;
@@ -1233,6 +1325,39 @@ function handle(act, el) {
       state.modal = null;
       break;
     }
+    case 'login': {
+      const email = (document.getElementById('login-email') || {}).value || '';
+      const user = DB.users.find((u) => u.email.toLowerCase() === email.trim().toLowerCase());
+      if (!user) { state.loginError = t('unknownUser'); break; }
+      signIn(user.id);
+      break;
+    }
+    case 'login-as': signIn(id); break;
+    case 'sign-out':
+      state.signedIn = false;
+      state.push = false;
+      state.toast = null;
+      state.view = 'chat';
+      break;
+    case 'toggle-push':
+      state.push = !state.push;
+      if (!state.push) state.toast = null;
+      break;
+    case 'test-push':
+      selfNotify('message', t('notificationCenter'), t('pushOnThisDevice'), { view: 'notifications' });
+      break;
+    case 'open-toast': {
+      const route = state.toast ? state.toast.route : null;
+      state.toast = null;
+      if (route) {
+        state.view = route.view || 'notifications';
+        if (route.channel) state.channel = route.channel;
+        if (route.task) state.taskOpen = route.task;
+        state.thread = route.thread || null;
+      }
+      break;
+    }
+    case 'close-toast': state.toast = null; break;
     case 'read-all':
       DB.notifications.filter((n) => n.uid === state.me).forEach((n) => { n.read = true; });
       break;

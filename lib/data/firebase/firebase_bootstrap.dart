@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -8,6 +9,7 @@ import '../../core/env.dart';
 import '../../firebase_options.dart';
 import '../../providers/providers.dart';
 import 'firebase_auth_repository.dart';
+import 'firebase_push_service.dart';
 import 'firebase_storage_media_repository.dart';
 import 'firestore_agenda_repository.dart';
 import 'firestore_chat_repository.dart';
@@ -39,6 +41,9 @@ Future<List<Override>> initializeFirebase() async {
     );
   }
 
+  // Notifications that arrive while the app is closed.
+  FirebaseMessaging.onBackgroundMessage(ctgBackgroundMessageHandler);
+
   return [
     authRepositoryProvider.overrideWithValue(
       FirebaseAuthRepository(auth: auth, firestore: firestore),
@@ -61,5 +66,6 @@ Future<List<Override>> initializeFirebase() async {
     mediaRepositoryProvider.overrideWithValue(
       FirebaseStorageMediaRepository(storage: storage),
     ),
+    pushServiceProvider.overrideWithValue(FirebasePushService()),
   ];
 }

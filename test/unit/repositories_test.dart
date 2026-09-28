@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:ctg_hub/data/mock/mock_db.dart';
 import 'package:ctg_hub/data/mock/mock_repositories.dart';
 import 'package:ctg_hub/domain/models/models.dart';
+import 'package:ctg_hub/domain/push_service.dart';
 import 'package:ctg_hub/domain/repositories/repositories.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -119,6 +120,75 @@ void main() {
   group('notifications', notificationTests);
   group('threads', threadTests);
   group('media', mediaTests);
+  group('push', pushTests);
+}
+
+// ---------------------------------------------------------------------------
+// Push registration. The mock stands in for FCM and replays notifications as
+// foreground messages, which is what drives the in-app banner.
+// ---------------------------------------------------------------------------
+void pushTests() {
+  late MockDb db;
+  late MockNotificationRepository notifications;
+  late MockPushService push;
+
+  setUp(() {
+    db = MockDb();
+    notifications = MockNotificationRepository(db);
+    push = MockPushService(db);
+  });
+
+  AppNotification notification(String uid) => AppNotification(
+        id: '',
+        uid: uid,
+        kind: NotificationKind.mention,
+        title: 'Omar Idrissi mentioned you',
+        body: 'Can you review this?',
+        route: '/chat/c_general',
+        createdAt: DateTime.now(),
+      );
+
+  test('permission starts undecided and is granted on registration', () async {
+    expect(await push.status(), PushPermission.notDetermined);
+    expect(await push.register('u1'), PushPermission.granted);
+    expect(await push.currentToken(), 'mock-device-u1');
+  });
+
+  test('a new notification arrives as a foreground message', () async {
+    await push.register('u2');
+    final next = push.foregroundMessages.first;
+    await notifications.add(notification('u2'));
+
+    final message = await next.timeout(const Duration(seconds: 2));
+    expect(message.title, contains('mentioned you'));
+    expect(message.route, '/chat/c_general');
+    expect(message.kind, 'mention');
+  });
+
+  test('notifications seeded before registration are not replayed', () async {
+    await notifications.add(notification('u2'));
+    await push.register('u2');
+
+    var delivered = false;
+    final sub = push.foregroundMessages.listen((_) => delivered = true);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    await sub.cancel();
+    expect(delivered, isFalse);
+  });
+
+  test('signing out drops the token and stops delivery', () async {
+    await push.register('u2');
+    await push.unregister('u2');
+    expect(await push.currentToken(), isNull);
+    expect(await push.status(), PushPermission.notDetermined);
+
+    var delivered = false;
+    final sub = push.foregroundMessages.listen((_) => delivered = true);
+    await notifications.add(notification('u2'));
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    await sub.cancel();
+    expect(delivered, isFalse);
+  });
 }
 
 // ---------------------------------------------------------------------------

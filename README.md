@@ -20,6 +20,7 @@ Built with **Flutter + Riverpod + go_router**, backed by **Firebase** (phase 1).
 | `firebase/seed/` | One-shot script that seeds a fresh project with members, teams, `#general` and the CTG project |
 | `test/` | Unit tests (models, mock repositories, mentions, localisation) and widget tests (task card, RTL, French) |
 | `.github/workflows/ci.yml` | CI: translation + no-emoji checks, `flutter analyze`, `flutter test`, web build, Functions type-check |
+| `web/` | Web shell plus `firebase-messaging-sw.js` for background web push |
 | `prototype/` | A dependency-free clickable HTML prototype of the same UI (see below) |
 | `tool/` | `gen_l10n.py` (ARB → Dart strings), `gen_prototype_i18n.py` (ARB → prototype) and `prototype_smoke.js` (headless prototype test) |
 
@@ -43,6 +44,8 @@ Against a real backend (after `flutterfire configure`):
 
 ```bash
 flutter run --dart-define=BACKEND=firebase
+# web push additionally needs the project's VAPID public key:
+flutter run -d chrome --dart-define=BACKEND=firebase --dart-define=VAPID_KEY=BFx...
 # or against the local emulator suite:
 flutter run --dart-define=BACKEND=firebase --dart-define=USE_EMULATOR=true
 #   Android emulator: add --dart-define=EMULATOR_HOST=10.0.2.2
@@ -92,6 +95,25 @@ manage members as admin, and switch language (including RTL Arabic) and theme.
   are hidden from the channel timeline, and the thread has its own composer.
   A reply notifies the root author — never the whole channel.
 
+## Push notifications
+
+- After sign-in the app asks for permission and registers the device through
+  the `registerDevice` callable; signing out calls `unregisterDevice`, so a
+  shared phone stops receiving someone else's alerts. The client never writes
+  to `users/{uid}.fcmTokens` itself.
+- Settings has a **Push notifications** switch showing the real permission
+  state (granted, blocked in system settings, or unsupported on this
+  platform).
+- A notification that arrives while the app is open becomes an in-app banner
+  with an **Open** action; tapping a system notification (cold start or
+  background) routes straight to the message, thread or task.
+- Web background push needs `web/firebase-messaging-sw.js`: replace the four
+  placeholder identifiers with the values `flutterfire configure` prints, and
+  pass `--dart-define=VAPID_KEY=...`.
+- The mock build behaves the same way: `MockPushService` grants permission,
+  issues a fake token and replays new notifications as foreground messages, so
+  the banner can be demoed with no backend.
+
 ## Mentions, search and notifications
 
 - Typing `@Firstname` (or `@email-handle`) in the composer mentions a member: the token is
@@ -136,7 +158,7 @@ Functions shipped: `onUserCreate` (claims + auto-join `#general`), `onUserRoleCh
 copy built in each recipient's `locale`), `onTaskWrite` (assignment + status notifications and
 an activity trail), `dueSoonScheduler` (hourly, 24h horizon), `onEventCreate` (invites),
 `assignTaskGroup` (transactional group assignment with sequential `CTG-###` keys),
-`registerDevice`.
+`registerDevice`, `unregisterDevice`.
 
 In-app notifications are written to `notifications/{uid}/items` by the same Functions and read by
 `FirestoreNotificationRepository`; the mock backend mirrors the exact same shape.
