@@ -219,5 +219,11 @@
   "mutedHint": "Vous voyez les messages, mais sans notification",
   "seen": "Vu",
   "seenByCount": "{count, plural, =0{Pas encore vu} =1{Vu par 1 membre} other{Vu par {count} membres}}",
-  "sent": "Envoyé"
+  "sent": "Envoyé",
+  "addAttachment": "Ajouter une pièce jointe",
+  "noAttachments": "Aucune pièce jointe",
+  "removeAttachment": "Retirer la pièce jointe",
+  "edit": "Modifier",
+  "edited": "modifié",
+  "editMessage": "Modifier le message"
 }

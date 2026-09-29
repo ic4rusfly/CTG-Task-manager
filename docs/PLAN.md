@@ -201,7 +201,7 @@ notifications/{uid}/items/{id}   kind, title, body, route, read, createdAt
 | **0. Foundations** *(done — this commit)* | — | Project skeleton, routing, theming, i18n ar/fr/en, models, repository interfaces, mock data, all screens clickable |
 | **1. Firebase wiring** *(rules, Functions, seed and CI landed)* | 1 week | Real project, Auth (email + Google), Firestore repos replacing mocks, security rules, seed script |
 | **2. Chat** *(mentions, search, threads, media upload, mute and read receipts landed)* | 1.5 weeks | Channels, DMs, media upload (image/file/audio/voice note), reactions, threads, unread & read receipts, search |
-| **3. Tasks** | 1.5 weeks | Projects, kanban DnD, filters, task detail, comments, checklist, progress, attachments, activity log |
+| **3. Tasks** *(attachments landed)* | 1.5 weeks | Projects, kanban DnD, filters, task detail, comments, checklist, progress, attachments, activity log |
 | **4. Assignment & admin** | 1 week | Group assignment (shared vs per-person clone), member management, teams, roles/claims |
 | **5. Agenda** | 1 week | Month/week/list views, events, recurrence, RSVP, task due dates merged, reminders |
 | **6. Notifications** *(in-app centre and FCM registration landed)* | 0.5 week | FCM + Cloud Functions, per-recipient-language payloads, in-app notification center, mute settings |

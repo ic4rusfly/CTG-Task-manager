@@ -109,4 +109,27 @@ class FirestoreTaskRepository implements TaskRepository {
 
   @override
   Future<void> deleteTask(String taskId) => _tasks.doc(taskId).delete();
+
+  @override
+  Future<void> addAttachment(String taskId, Attachment attachment) =>
+      _tasks.doc(taskId).update({
+        'attachments': FieldValue.arrayUnion([attachment.toMap()]),
+        'updatedAt': DateTime.now().toIso8601String(),
+      });
+
+  @override
+  Future<void> removeAttachment(String taskId, String url) async {
+    final ref = _tasks.doc(taskId);
+    await _db.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+      final current = (snap.data()?['attachments'] as List?) ?? const [];
+      final kept = current
+          .where((a) => (a as Map)['url'] != url)
+          .toList();
+      tx.update(ref, {
+        'attachments': kept,
+        'updatedAt': DateTime.now().toIso8601String(),
+      });
+    });
+  }
 }

@@ -81,6 +81,13 @@ class FirestoreChatRepository implements ChatRepository {
   }
 
   @override
+  Future<void> editMessage(String channelId, String messageId, String text) => _channels
+      .doc(channelId)
+      .collection('messages')
+      .doc(messageId)
+      .update({'text': text, 'editedAt': DateTime.now().toIso8601String()});
+
+  @override
   Future<void> deleteMessage(String channelId, String messageId) => _channels
       .doc(channelId)
       .collection('messages')

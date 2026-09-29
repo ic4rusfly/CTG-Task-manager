@@ -190,6 +190,12 @@ class AppLocalizations {
   String get mutedHint => _get('mutedHint');
   String get seen => _get('seen');
   String get sent => _get('sent');
+  String get addAttachment => _get('addAttachment');
+  String get noAttachments => _get('noAttachments');
+  String get removeAttachment => _get('removeAttachment');
+  String get edit => _get('edit');
+  String get edited => _get('edited');
+  String get editMessage => _get('editMessage');
 
   String minutesAgo(int count) {
     var s = _get('minutesAgo');
@@ -475,6 +481,12 @@ const _strings = <String, Map<String, String>>{
     'seen': 'Seen',
     'seenByCount': '{count, plural, =0{Not seen yet} =1{Seen by 1 member} other{Seen by {count} members}}',
     'sent': 'Sent',
+    'addAttachment': 'Add attachment',
+    'noAttachments': 'No attachments yet',
+    'removeAttachment': 'Remove attachment',
+    'edit': 'Edit',
+    'edited': 'edited',
+    'editMessage': 'Edit message',
   },
   'fr': <String, String>{
     'appName': 'CTG Hub',
@@ -655,6 +667,12 @@ const _strings = <String, Map<String, String>>{
     'seen': 'Vu',
     'seenByCount': '{count, plural, =0{Pas encore vu} =1{Vu par 1 membre} other{Vu par {count} membres}}',
     'sent': 'Envoyé',
+    'addAttachment': 'Ajouter une pièce jointe',
+    'noAttachments': 'Aucune pièce jointe',
+    'removeAttachment': 'Retirer la pièce jointe',
+    'edit': 'Modifier',
+    'edited': 'modifié',
+    'editMessage': 'Modifier le message',
   },
   'ar': <String, String>{
     'appName': 'مركز CTG',
@@ -835,5 +853,11 @@ const _strings = <String, Map<String, String>>{
     'seen': 'تمت المشاهدة',
     'seenByCount': '{count, plural, =0{لم يُشاهد بعد} =1{شاهده عضو واحد} =2{شاهده عضوان} few{شاهده {count} أعضاء} other{شاهده {count} عضوا}}',
     'sent': 'أُرسلت',
+    'addAttachment': 'إضافة مرفق',
+    'noAttachments': 'لا توجد مرفقات',
+    'removeAttachment': 'إزالة المرفق',
+    'edit': 'تعديل',
+    'edited': 'مُعدَّل',
+    'editMessage': 'تعديل الرسالة',
   },
 };

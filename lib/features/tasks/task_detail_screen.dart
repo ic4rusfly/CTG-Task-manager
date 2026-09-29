@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/attachment_picker.dart';
 import '../../core/formatters.dart';
 import '../../core/labels.dart';
 import '../../core/theme.dart';
 import '../../domain/models/models.dart';
+import '../../domain/repositories/repositories.dart';
 import '../../providers/providers.dart';
 import '../../widgets/common.dart';
 
@@ -19,6 +21,54 @@ class TaskDetailScreen extends ConsumerStatefulWidget {
 
 class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
   final _comment = TextEditingController();
+
+  double? _uploadProgress;
+  String? _uploadName;
+  String? _uploadError;
+
+  /// Picks a file, uploads it to `tasks/{taskId}` and attaches it.
+  Future<void> _attach() async {
+    final t = tr(context);
+    final picked = await pickAttachment(PickKind.any);
+    if (picked == null || !mounted) return;
+    setState(() {
+      _uploadName = picked.name;
+      _uploadProgress = 0;
+      _uploadError = null;
+    });
+    try {
+      final attachment = await ref.read(mediaRepositoryProvider).upload(
+            folder: 'tasks/${widget.taskId}',
+            fileName: picked.name,
+            mime: picked.mime,
+            bytes: picked.bytes,
+            onProgress: (value) {
+              if (mounted) setState(() => _uploadProgress = value);
+            },
+          );
+      await ref.read(taskRepositoryProvider).addAttachment(widget.taskId, attachment);
+      if (mounted) {
+        setState(() {
+          _uploadProgress = null;
+          _uploadName = null;
+        });
+      }
+    } on MediaTooLargeException {
+      if (!mounted) return;
+      setState(() {
+        _uploadProgress = null;
+        _uploadName = null;
+        _uploadError = t.fileTooLarge(readableBytes(MediaRepository.maxBytes));
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _uploadProgress = null;
+        _uploadName = null;
+        _uploadError = t.uploadFailed;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -164,6 +214,45 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
               ),
           ],
           const SizedBox(height: 22),
+          Row(
+            children: [
+              Text(t.attachments, style: Theme.of(context).textTheme.titleMedium),
+              const Spacer(),
+              if (canEdit)
+                TextButton.icon(
+                  onPressed: _uploadProgress == null ? _attach : null,
+                  icon: const Icon(Icons.attach_file, size: 18),
+                  label: Text(t.addAttachment),
+                ),
+            ],
+          ),
+          if (_uploadProgress != null) ...[
+            Text('${t.uploading}  ${_uploadName ?? ''}',
+                style: Theme.of(context).textTheme.labelSmall),
+            const SizedBox(height: 4),
+            LinearProgressIndicator(value: _uploadProgress),
+          ],
+          if (_uploadError != null)
+            Text(
+              _uploadError!,
+              style: Theme.of(context)
+                  .textTheme
+                  .labelSmall
+                  ?.copyWith(color: Theme.of(context).colorScheme.error),
+            ),
+          if (task.attachments.isEmpty && _uploadProgress == null)
+            Text(t.noAttachments, style: Theme.of(context).textTheme.bodySmall)
+          else
+            for (final a in task.attachments)
+              _AttachmentTile(
+                attachment: a,
+                onRemove: canEdit
+                    ? () => ref
+                        .read(taskRepositoryProvider)
+                        .removeAttachment(task.id, a.url)
+                    : null,
+              ),
+          const SizedBox(height: 22),
           Text(t.comments, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           if (comments.isEmpty)
@@ -259,6 +348,62 @@ class _PeopleRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// One file on a task: thumbnail for pictures, icon for everything else.
+class _AttachmentTile extends ConsumerWidget {
+  const _AttachmentTile({required this.attachment, this.onRemove});
+
+  final Attachment attachment;
+  final VoidCallback? onRemove;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = tr(context);
+    final local = ref.watch(mediaRepositoryProvider).localBytes(attachment.url);
+    final scheme = Theme.of(context).colorScheme;
+
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      dense: true,
+      leading: SizedBox(
+        width: 40,
+        height: 40,
+        child: attachment.isImage && local != null
+            ? ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.memory(local, fit: BoxFit.cover),
+              )
+            : Container(
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  attachment.isImage
+                      ? Icons.image_outlined
+                      : attachment.isAudio
+                          ? Icons.audiotrack_outlined
+                          : Icons.insert_drive_file_outlined,
+                  size: 20,
+                ),
+              ),
+      ),
+      title: Text(attachment.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: Text(
+        attachment.readableSize.isEmpty
+            ? readableBytes(attachment.sizeBytes)
+            : attachment.readableSize,
+      ),
+      trailing: onRemove == null
+          ? null
+          : IconButton(
+              tooltip: t.removeAttachment,
+              icon: const Icon(Icons.close, size: 18),
+              onPressed: onRemove,
+            ),
     );
   }
 }

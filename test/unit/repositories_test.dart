@@ -123,6 +123,63 @@ void main() {
   group('media', mediaTests);
   group('push', pushTests);
   group('mute and receipts', muteAndReceiptTests);
+  group('editing and task files', editAndTaskFileTests);
+}
+
+// ---------------------------------------------------------------------------
+// Message editing and task attachments (the same MediaRepository as chat).
+// ---------------------------------------------------------------------------
+void editAndTaskFileTests() {
+  late MockDb db;
+  late MockChatRepository chat;
+  late MockTaskRepository tasks;
+  late MockMediaRepository media;
+
+  setUp(() {
+    db = MockDb();
+    chat = MockChatRepository(db);
+    tasks = MockTaskRepository(db);
+    media = MockMediaRepository(db);
+  });
+
+  test('editing rewrites the text and stamps editedAt', () async {
+    await chat.editMessage('c_general', 'm1', 'Reminder: the review moved to Friday.');
+    final message = db.messages['c_general']!.firstWhere((m) => m.id == 'm1');
+    expect(message.text, endsWith('Friday.'));
+    expect(message.editedAt, isNotNull);
+  });
+
+  test('editing the newest message refreshes the conversation preview', () async {
+    final roots = db.messages['c_general']!.where((m) => m.replyToId == null).toList();
+    await chat.editMessage('c_general', roots.last.id, 'Updated preview');
+    final channel = db.channels.firstWhere((c) => c.id == 'c_general');
+    expect(channel.lastMessageText, 'Updated preview');
+  });
+
+  test('a deleted message cannot be edited', () async {
+    await chat.deleteMessage('c_general', 'm1');
+    await chat.editMessage('c_general', 'm1', 'Sneaky');
+    final message = db.messages['c_general']!.firstWhere((m) => m.id == 'm1');
+    expect(message.text, isEmpty);
+    expect(message.deleted, isTrue);
+  });
+
+  test('task attachments go through the same upload path as chat', () async {
+    final attachment = await media.upload(
+      folder: 'tasks/k1',
+      fileName: 'budget.csv',
+      mime: 'text/csv',
+      bytes: Uint8List.fromList(List<int>.filled(512, 3)),
+    );
+    await tasks.addAttachment('k1', attachment);
+
+    final task = db.tasks.firstWhere((t) => t.id == 'k1');
+    expect(task.attachments.single.name, 'budget.csv');
+    expect(task.updatedAt, isNotNull);
+
+    await tasks.removeAttachment('k1', attachment.url);
+    expect(db.tasks.firstWhere((t) => t.id == 'k1').attachments, isEmpty);
+  });
 }
 
 // ---------------------------------------------------------------------------

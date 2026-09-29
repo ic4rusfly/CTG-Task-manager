@@ -327,6 +327,16 @@ class MessageBubble extends ConsumerWidget {
                           formatTime(message.sentAt, locale),
                           style: Theme.of(context).textTheme.labelSmall,
                         ),
+                        if (message.editedAt != null && !message.deleted) ...[
+                          const SizedBox(width: 6),
+                          Text(
+                            t.edited,
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                  fontStyle: FontStyle.italic,
+                                  color: scheme.outline,
+                                ),
+                          ),
+                        ],
                         if (showThread && message.threadCount > 0) ...[
                           const SizedBox(width: 8),
                           InkWell(
@@ -400,6 +410,40 @@ class MessageBubble extends ConsumerWidget {
     );
   }
 
+  /// Lets the author rewrite a message; the bubble then shows "edited".
+  Future<void> _editMessage(BuildContext context, WidgetRef ref) async {
+    final t = tr(context);
+    final controller = TextEditingController(text: message.text);
+    final updated = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(t.editMessage),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          minLines: 1,
+          maxLines: 6,
+          onSubmitted: (value) => Navigator.of(dialogContext).pop(value.trim()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(t.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(controller.text.trim()),
+            child: Text(t.save),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (updated == null || updated.isEmpty || updated == message.text) return;
+    await ref
+        .read(chatRepositoryProvider)
+        .editMessage(message.channelId, message.id, updated);
+  }
+
   void _showActions(BuildContext context, WidgetRef ref, String? uid) {
     final t = tr(context);
     final router = GoRouter.of(context);
@@ -432,6 +476,15 @@ class MessageBubble extends ConsumerWidget {
                 onTap: () {
                   Navigator.of(context).pop();
                   router.go('/chat/${message.channelId}/thread/${message.id}');
+                },
+              ),
+            if (isMine && !message.deleted && message.text.isNotEmpty)
+              ListTile(
+                leading: const Icon(Icons.edit_outlined),
+                title: Text(t.edit),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _editMessage(context, ref);
                 },
               ),
             if (isMine)

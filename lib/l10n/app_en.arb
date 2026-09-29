@@ -285,5 +285,11 @@
       }
     }
   },
-  "sent": "Sent"
+  "sent": "Sent",
+  "addAttachment": "Add attachment",
+  "noAttachments": "No attachments yet",
+  "removeAttachment": "Remove attachment",
+  "edit": "Edit",
+  "edited": "edited",
+  "editMessage": "Edit message"
 }

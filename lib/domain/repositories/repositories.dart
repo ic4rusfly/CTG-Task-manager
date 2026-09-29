@@ -30,6 +30,7 @@ abstract class ChatRepository {
   Stream<List<Message>> watchThread(String channelId, String rootId);
   Future<void> sendMessage(Message message);
   Future<void> toggleReaction(String channelId, String messageId, String emoji, String uid);
+  Future<void> editMessage(String channelId, String messageId, String text);
   Future<void> deleteMessage(String channelId, String messageId);
   Future<void> markRead(String channelId, String uid);
   Future<Channel> createChannel({
@@ -58,6 +59,9 @@ abstract class TaskRepository {
   Future<void> setProgress(String taskId, int progress);
   Future<void> toggleChecklistItem(String taskId, String itemId);
   Future<void> addComment(TaskComment comment);
+  /// Attaches an already-uploaded file to a task, or removes one by url.
+  Future<void> addAttachment(String taskId, Attachment attachment);
+  Future<void> removeAttachment(String taskId, String url);
   Future<void> deleteTask(String taskId);
 }
 

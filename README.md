@@ -90,6 +90,11 @@ manage members as admin, and switch language (including RTL Arabic) and theme.
 - Uploads show a progress bar in the composer and, if something fails, an
   inline error with a retry action. Pictures are rendered from memory in the
   demo build and from the download URL in production.
+- Tasks take files through the same `MediaRepository`, uploaded to
+  `tasks/{taskId}/...`: an Attachments section in the task detail with a
+  progress bar, thumbnails for pictures and a remove action.
+- You can **edit** your own message; the bubble then carries an "edited"
+  marker and the conversation preview follows the newest text.
 - Any message can be turned into a **thread**: long-press (or the thread icon)
   gives "Reply in thread", the root message keeps a "N replies" chip, replies
   are hidden from the channel timeline, and the thread has its own composer.

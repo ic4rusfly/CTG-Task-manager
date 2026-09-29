@@ -153,6 +153,32 @@ async function uploadRun() {
 }
 
 uploadRun().then(() => {
+  // ------------------------------------------------------ edit a message ----
+  click('.nav-item[data-id="chat"]');
+  click('[data-act="channel"][data-id="c_general"]');
+  doc.getElementById('composer-input').value = 'Draft note';
+  click('[data-act="send"]');
+  const mine = [...doc.querySelectorAll('.msg.mine')].pop();
+  fire(mine.querySelector('[data-act="edit-msg"]'));
+  ok(!!doc.getElementById('edit-input'), 'the edit dialog opens on my own message');
+  doc.getElementById('edit-input').value = 'Draft note, corrected';
+  click('[data-act="save-edit"]');
+  const editedBubble = [...doc.querySelectorAll('.msg.mine')].pop().textContent;
+  ok(editedBubble.includes('corrected'), 'the message text is updated');
+  const editedLabels = Object.values(w.I18N).map((table) => table.edited);
+  ok(editedLabels.some((label) => editedBubble.includes(label)), 'the bubble is marked as edited');
+
+  // ----------------------------------------------------- task attachments ---
+  click('.nav-item[data-id="tasks"]');
+  fire(doc.querySelector('[data-act="open-task"]'));
+  ok(!!doc.querySelector('[data-act="task-attach"]'), 'a task can take attachments');
+  let taskPickerOpened = false;
+  fileInput.click = () => {
+    taskPickerOpened = true;
+  };
+  click('[data-act="task-attach"]');
+  ok(taskPickerOpened, 'the task attach action opens the file picker');
+
   // ------------------------------------------------------- mute and seen ----
   click('.nav-item[data-id="chat"]');
   click('[data-act="channel"][data-id="c_general"]');

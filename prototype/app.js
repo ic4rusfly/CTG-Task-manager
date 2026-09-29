@@ -134,6 +134,7 @@ const ICONS = {
   bell: svg('<path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>'),
   thread: svg('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/>'),
   bellOff: svg('<path d="M13.7 21a2 2 0 0 1-3.4 0"/><path d="M18.6 13A17 17 0 0 1 18 8a6 6 0 0 0-9.3-5"/><path d="M6.3 6.3A6 6 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M2 2l20 20"/>'),
+  edit: svg('<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>'),
   check: svg('<path d="M4 12l5 5L20 6"/>'),
   at: svg('<circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/>'),
   clock: svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
@@ -589,7 +590,8 @@ function messageHtml(m, opts = {}) {
       ${avatar(m.from)}
       <div class="body grow">
         <div class="head"><span class="who">${esc(userName(m.from))}</span>
-          <span class="when">${esc(fmtTime(m.at))}</span></div>
+          <span class="when">${esc(fmtTime(m.at))}</span>
+          ${m.editedAt ? `<span class="when" style="font-style:italic">${esc(t('edited'))}</span>` : ''}</div>
         <div class="bubble">${body}${text}</div>
         ${receipt}
         <div class="reactions">${reactions}</div>
@@ -599,6 +601,8 @@ function messageHtml(m, opts = {}) {
       <div class="msg-actions">${picker}
         ${opts.inThread ? '' : `<button class="btn icon small ghost" data-act="open-thread" data-id="${m.id}"
           title="${esc(t('replyInThread'))}">${ICONS.thread}</button>`}
+        ${mine && m.text && !m.deleted ? `<button class="btn icon small ghost" data-act="edit-msg" data-id="${m.id}"
+          title="${esc(t('editMessage'))}">${ICONS.edit}</button>` : ''}
         ${mine ? `<button class="btn icon small ghost" data-act="del-msg" data-id="${m.id}"
           title="${esc(t('deleteMessage'))}">${ICONS.trash}</button>` : ''}</div>
     </div>`;
@@ -706,6 +710,26 @@ function taskPanel(task) {
               <input type="checkbox" ${c.done ? 'checked' : ''} data-act="check" data-id="${task.id}" data-code="${c.id}">
               <span style="${c.done ? 'text-decoration:line-through;color:var(--text-dim)' : ''}">${esc(c.text)}</span>
             </label>`).join('')}` : ''}
+
+          <div class="row" style="margin-top:14px">
+            <b class="grow">${esc(t('attachments'))}</b>
+            <button class="btn small" data-act="task-attach" data-id="${task.id}"
+              ${state.upload ? 'disabled' : ''}>${ICONS.file}${esc(t('addAttachment'))}</button>
+          </div>
+          ${state.upload && state.upload.task === task.id ? `<div class="small muted">
+            ${esc(t('uploading'))} ${esc(state.upload.name)}</div>
+            ${progressBar(Math.round((state.upload.progress || 0) * 100))}` : ''}
+          ${(task.files || []).length ? (task.files || []).map((f) => `
+            <div class="row" style="padding:5px 0">
+              ${f.url && f.mime.startsWith('image/')
+                ? `<img src="${esc(f.url)}" alt="${esc(f.name)}"
+                     style="width:38px;height:38px;object-fit:cover;border-radius:8px">`
+                : `<span class="hash">${ICONS.file}</span>`}
+              <span class="grow"><b>${esc(f.name)}</b>
+                <div class="small muted">${esc(f.size)}</div></span>
+              <button class="btn icon small ghost" data-act="task-detach" data-id="${task.id}"
+                data-code="${esc(f.name)}" title="${esc(t('removeAttachment'))}">${ICONS.close}</button>
+            </div>`).join('') : `<div class="small muted">${esc(t('noAttachments'))}</div>`}
 
           <div class="section-title">${esc(t('comments'))}</div>
           ${task.comments.map((c) => `
@@ -1092,49 +1116,56 @@ const ACCEPT = { image: 'image/*', audio: 'audio/*', file: '' };
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 
 /** Opens the real file picker, then "uploads" with a progress bar. */
-function pickAndUpload(kind) {
+function pickAndUpload(kind, taskId) {
   const input = document.getElementById('file-input');
   input.accept = ACCEPT[kind];
   input.onchange = () => {
     const file = input.files && input.files[0];
     input.value = '';
-    if (file) uploadFile(file, kind);
+    if (file) uploadFile(file, kind, taskId);
   };
   input.click();
 }
 
-function uploadFile(file, kind) {
+function uploadFile(file, kind, taskId) {
   if (file.size > MAX_UPLOAD_BYTES) {
-    state.upload = { name: file.name, error: t('fileTooLarge', { limit: '25 MB' }) };
+    state.upload = { name: file.name, error: t('fileTooLarge', { limit: '25 MB' }), task: taskId };
     render();
     return;
   }
-  state.upload = { name: file.name, progress: 0, kind };
+  state.upload = { name: file.name, progress: 0, kind, task: taskId };
   render();
 
   const reader = new FileReader();
   reader.onerror = () => {
-    state.upload = { name: file.name, error: t('uploadFailed'), retry: () => uploadFile(file, kind) };
+    state.upload = {
+      name: file.name, error: t('uploadFailed'), task: taskId,
+      retry: () => uploadFile(file, kind, taskId),
+    };
     render();
   };
   reader.onload = () => {
     let step = 0;
     const timer = setInterval(() => {
       step += 1;
-      state.upload = { name: file.name, progress: step / 5, kind };
+      state.upload = { name: file.name, progress: step / 5, kind, task: taskId };
       render();
       if (step === 5) {
         clearInterval(timer);
         state.upload = null;
-        sendMessage(kind, {
-          text: '',
-          att: {
-            name: file.name,
-            mime: file.type || 'application/octet-stream',
-            size: readableBytes(file.size),
-            url: reader.result,
-          },
-        });
+        const attachment = {
+          name: file.name,
+          mime: file.type || 'application/octet-stream',
+          size: readableBytes(file.size),
+          url: reader.result,
+        };
+        if (taskId) {
+          const task = byId(DB.tasks, taskId);
+          task.files = [...(task.files || []), attachment];
+          render();
+          return;
+        }
+        sendMessage(kind, { text: '', att: attachment });
       }
     }, 120);
   };
@@ -1373,6 +1404,32 @@ function handle(act, el) {
       state.toast = null;
       state.view = 'chat';
       break;
+    case 'edit-msg': {
+      const message = byId(DB.messages, id);
+      if (!message) return;
+      state.modal = () => modalShell(t('editMessage'),
+        `<input type="text" id="edit-input" value="${esc(message.text)}">`,
+        `<button class="btn" data-act="close-modal">${esc(t('cancel'))}</button>
+         <button class="btn primary" data-act="save-edit" data-id="${message.id}">${esc(t('save'))}</button>`);
+      break;
+    }
+    case 'save-edit': {
+      const message = byId(DB.messages, id);
+      const box = document.getElementById('edit-input');
+      const value = box ? box.value.trim() : '';
+      state.modal = null;
+      if (message && value && value !== message.text) {
+        message.text = value;
+        message.editedAt = new Date();
+      }
+      break;
+    }
+    case 'task-attach': pickAndUpload('file', id); return;
+    case 'task-detach': {
+      const task = byId(DB.tasks, id);
+      task.files = (task.files || []).filter((f) => f.name !== code);
+      break;
+    }
     case 'toggle-mute': {
       const user = me();
       user.muted = user.muted || [];

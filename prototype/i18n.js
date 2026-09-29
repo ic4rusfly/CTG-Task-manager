@@ -178,7 +178,13 @@ window.I18N = {
     "mutedHint": "You still see messages, but they will not notify you",
     "seen": "Seen",
     "seenByCount": "{count, plural, =0{Not seen yet} =1{Seen by 1 member} other{Seen by {count} members}}",
-    "sent": "Sent"
+    "sent": "Sent",
+    "addAttachment": "Add attachment",
+    "noAttachments": "No attachments yet",
+    "removeAttachment": "Remove attachment",
+    "edit": "Edit",
+    "edited": "edited",
+    "editMessage": "Edit message"
   },
   "fr": {
     "appName": "CTG Hub",
@@ -358,7 +364,13 @@ window.I18N = {
     "mutedHint": "Vous voyez les messages, mais sans notification",
     "seen": "Vu",
     "seenByCount": "{count, plural, =0{Pas encore vu} =1{Vu par 1 membre} other{Vu par {count} membres}}",
-    "sent": "Envoyé"
+    "sent": "Envoyé",
+    "addAttachment": "Ajouter une pièce jointe",
+    "noAttachments": "Aucune pièce jointe",
+    "removeAttachment": "Retirer la pièce jointe",
+    "edit": "Modifier",
+    "edited": "modifié",
+    "editMessage": "Modifier le message"
   },
   "ar": {
     "appName": "مركز CTG",
@@ -538,6 +550,12 @@ window.I18N = {
     "mutedHint": "ستظل ترى الرسائل دون تلقي إشعارات",
     "seen": "تمت المشاهدة",
     "seenByCount": "{count, plural, =0{لم يُشاهد بعد} =1{شاهده عضو واحد} =2{شاهده عضوان} few{شاهده {count} أعضاء} other{شاهده {count} عضوا}}",
-    "sent": "أُرسلت"
+    "sent": "أُرسلت",
+    "addAttachment": "إضافة مرفق",
+    "noAttachments": "لا توجد مرفقات",
+    "removeAttachment": "إزالة المرفق",
+    "edit": "تعديل",
+    "edited": "مُعدَّل",
+    "editMessage": "تعديل الرسالة"
   }
 };

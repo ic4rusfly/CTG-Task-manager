@@ -228,6 +228,26 @@ class MockChatRepository implements ChatRepository {
   }
 
   @override
+  Future<void> editMessage(String channelId, String messageId, String text) async {
+    final list = _db.messages[channelId];
+    if (list == null) return;
+    final i = list.indexWhere((m) => m.id == messageId);
+    if (i == -1 || list[i].deleted) return;
+    list[i] = list[i].copyWith(text: text, editedAt: DateTime.now());
+    final c = _db.channels.indexWhere((x) => x.id == channelId);
+    if (c != -1 && _db.channels[c].lastMessageText.isNotEmpty) {
+      final roots = (_db.messages[channelId] ?? const <Message>[])
+          .where((m) => m.replyToId == null)
+          .toList();
+      if (roots.isNotEmpty && roots.last.id == messageId) {
+        _db.channels[c] = _db.channels[c].copyWith(lastMessageText: text);
+        _db.pingChannels();
+      }
+    }
+    _db.pingMessages(channelId);
+  }
+
+  @override
   Future<void> deleteMessage(String channelId, String messageId) async {
     final list = _db.messages[channelId];
     if (list == null) return;
@@ -451,6 +471,29 @@ class MockTaskRepository implements TaskRepository {
           ),
         );
     _db.pingComments(comment.taskId);
+  }
+
+  @override
+  Future<void> addAttachment(String taskId, Attachment attachment) async {
+    final i = _db.tasks.indexWhere((t) => t.id == taskId);
+    if (i == -1) return;
+    _db.tasks[i] = _db.tasks[i].copyWith(
+      attachments: [..._db.tasks[i].attachments, attachment],
+      updatedAt: DateTime.now(),
+    );
+    _db.pingTasks();
+  }
+
+  @override
+  Future<void> removeAttachment(String taskId, String url) async {
+    final i = _db.tasks.indexWhere((t) => t.id == taskId);
+    if (i == -1) return;
+    _db.tasks[i] = _db.tasks[i].copyWith(
+      attachments:
+          _db.tasks[i].attachments.where((a) => a.url != url).toList(),
+      updatedAt: DateTime.now(),
+    );
+    _db.pingTasks();
   }
 
   @override
