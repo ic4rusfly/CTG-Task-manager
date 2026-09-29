@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../core/search_tokens.dart';
 import '../../domain/models/models.dart';
 import '../../domain/repositories/repositories.dart';
 
@@ -86,6 +87,42 @@ class FirestoreChatRepository implements ChatRepository {
       .collection('messages')
       .doc(messageId)
       .update({'text': text, 'editedAt': DateTime.now().toIso8601String()});
+
+  /// One indexed collection-group query per batch of 30 conversations
+  /// (Firestore caps `whereIn`), then an exact check on the full phrase.
+  @override
+  Future<List<Message>> searchMessages({
+    required String query,
+    required List<String> channelIds,
+    int limit = 50,
+  }) async {
+    final token = queryToken(query);
+    if (token == null || channelIds.isEmpty) return const [];
+
+    final hits = <Message>[];
+    for (var i = 0; i < channelIds.length; i += 30) {
+      final batch = channelIds.sublist(i, (i + 30).clamp(0, channelIds.length));
+      final snap = await _db
+          .collectionGroup('messages')
+          .where('keywords', arrayContains: token)
+          .where('channelId', whereIn: batch)
+          .orderBy('sentAt', descending: true)
+          .limit(limit)
+          .get();
+      for (final doc in snap.docs) {
+        final data = doc.data();
+        final message = Message.fromMap(
+          doc.id,
+          data['channelId'] as String? ?? '',
+          data,
+        );
+        if (message.deleted) continue;
+        if (matchesQuery(message.searchable, query)) hits.add(message);
+      }
+    }
+    hits.sort((a, b) => b.sentAt.compareTo(a.sentAt));
+    return hits.length <= limit ? hits : hits.sublist(0, limit);
+  }
 
   @override
   Future<void> deleteMessage(String channelId, String messageId) => _channels

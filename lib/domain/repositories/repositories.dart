@@ -31,6 +31,14 @@ abstract class ChatRepository {
   Future<void> sendMessage(Message message);
   Future<void> toggleReaction(String channelId, String messageId, String emoji, String uid);
   Future<void> editMessage(String channelId, String messageId, String text);
+
+  /// Full-text search across the conversations [channelIds], newest first.
+  /// Backed by the `keywords` index in Firestore and by a scan in the mock.
+  Future<List<Message>> searchMessages({
+    required String query,
+    required List<String> channelIds,
+    int limit = 50,
+  });
   Future<void> deleteMessage(String channelId, String messageId);
   Future<void> markRead(String channelId, String uid);
   Future<Channel> createChannel({

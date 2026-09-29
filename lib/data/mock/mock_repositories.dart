@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import '../../l10n/app_localizations.dart';
 import '../../domain/models/models.dart';
+import '../../core/search_tokens.dart';
 import '../../domain/push_service.dart';
 import '../../domain/repositories/repositories.dart';
 import 'mock_db.dart';
@@ -248,6 +249,24 @@ class MockChatRepository implements ChatRepository {
       }
     }
     _db.pingMessages(channelId);
+  }
+
+  @override
+  Future<List<Message>> searchMessages({
+    required String query,
+    required List<String> channelIds,
+    int limit = 50,
+  }) async {
+    if (query.trim().length < 2) return const [];
+    final hits = <Message>[];
+    for (final channelId in channelIds) {
+      for (final message in _db.messages[channelId] ?? const <Message>[]) {
+        if (message.deleted) continue;
+        if (matchesQuery(message.searchable, query)) hits.add(message);
+      }
+    }
+    hits.sort((a, b) => b.sentAt.compareTo(a.sentAt));
+    return hits.length <= limit ? hits : hits.sublist(0, limit);
   }
 
   @override

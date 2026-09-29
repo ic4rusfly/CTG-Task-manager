@@ -35,7 +35,8 @@ class _MessageSearchScreenState extends ConsumerState<MessageSearchScreen> {
     final locale = Localizations.localeOf(context).languageCode;
     final usersById = ref.watch(usersByIdProvider);
     final query = ref.watch(messageSearchQueryProvider);
-    final hits = ref.watch(messageSearchProvider);
+    final search = ref.watch(messageSearchProvider);
+    final hits = search.value ?? const <MessageHit>[];
 
     return Scaffold(
       appBar: AppBar(
@@ -52,7 +53,11 @@ class _MessageSearchScreenState extends ConsumerState<MessageSearchScreen> {
       ),
       body: query.trim().length < 2
           ? EmptyState(icon: Icons.search, message: t.searchMessages)
-          : hits.isEmpty
+          : search.isLoading && hits.isEmpty
+              ? const Center(child: CircularProgressIndicator())
+              : search.hasError
+                  ? EmptyState(icon: Icons.error_outline, message: t.errorBody)
+                  : hits.isEmpty
               ? EmptyState(icon: Icons.search_off, message: t.noResults)
               : ListView.separated(
                   padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),

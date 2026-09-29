@@ -125,6 +125,56 @@ void main() {
   group('mute and receipts', muteAndReceiptTests);
   group('editing and task files', editAndTaskFileTests);
   group('task activity', activityTests);
+  group('message search', searchTests);
+}
+
+// ---------------------------------------------------------------------------
+// Search. The mock scans; Firestore runs the same contract as one indexed
+// collection-group query over the keywords array.
+// ---------------------------------------------------------------------------
+void searchTests() {
+  late MockDb db;
+  late MockChatRepository chat;
+
+  setUp(() {
+    db = MockDb();
+    chat = MockChatRepository(db);
+  });
+
+  List<String> myChannels() =>
+      db.channels.where((c) => c.memberIds.contains('u1')).map((c) => c.id).toList();
+
+  test('finds a message across conversations, newest first', () async {
+    final hits = await chat.searchMessages(query: 'onboarding', channelIds: myChannels());
+    expect(hits, isNotEmpty);
+    expect(hits.first.searchable.toLowerCase(), contains('onboarding'));
+    for (var i = 1; i < hits.length; i++) {
+      expect(hits[i - 1].sentAt.isAfter(hits[i].sentAt), isTrue);
+    }
+  });
+
+  test('matches attachment names as well as text', () async {
+    final hits = await chat.searchMessages(query: 'venue-contract', channelIds: myChannels());
+    expect(hits.single.attachments.single.name, 'venue-contract.pdf');
+  });
+
+  test('never returns a conversation I do not belong to', () async {
+    final hits = await chat.searchMessages(query: 'palette', channelIds: myChannels());
+    expect(hits, isEmpty, reason: 'c_dm_2_3 has no u1');
+  });
+
+  test('skips deleted messages and short queries', () async {
+    await chat.deleteMessage('c_general', 'm1');
+    final hits = await chat.searchMessages(query: 'Thursday', channelIds: myChannels());
+    expect(hits.map((m) => m.id), isNot(contains('m1')));
+    expect(await chat.searchMessages(query: 'a', channelIds: myChannels()), isEmpty);
+  });
+
+  test('every stored message carries its search keywords', () {
+    final message = db.messages['c_general']!.first;
+    expect(message.toMap()['keywords'], contains('thursday'));
+    expect(message.toMap()['channelId'], 'c_general');
+  });
 }
 
 // ---------------------------------------------------------------------------

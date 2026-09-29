@@ -148,8 +148,12 @@ identical on both backends.
   highlighted in the bubble and the person gets a notification. `lib/core/mentions.dart` does the
   resolution and is unicode-aware, so Arabic and French names match too.
 - The search icon on the conversation list opens a full-text search across every channel and DM
-  the signed-in member belongs to (client-side over the streamed messages; a Firestore or Algolia
-  index is the phase-2 upgrade).
+  the signed-in member belongs to. Every message stores a `keywords` array and its `channelId`,
+  so Firestore answers with **one indexed collection-group query** (filtered by conversation,
+  newest first) and the client only re-checks the full phrase. The mock backend scans its
+  in-memory data through the same `searchMessages` contract. `lib/core/search_tokens.dart` and
+  `firebase/functions/src/tokens.ts` are deliberate twins, and `onMessageIndex` repairs the
+  index after edits or writes made outside the app.
 - The bell tab is the notification centre. Every notification is composed **in the recipient's
   language** — by the Cloud Functions in production, by `MockNotifier` in mock mode — and stores
   a route so tapping it jumps straight to the message or task.

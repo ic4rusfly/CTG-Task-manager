@@ -18,7 +18,8 @@ runs on in-memory mock data by default and on Firebase with
   channel timeline, reply notifications to the root author only.
 - Mentions with `@`, highlighted in the bubble and resolved unicode-aware, so
   Arabic and French names match.
-- Full-text search across every conversation the member belongs to.
+- Full-text search across every conversation the member belongs to, served by
+  an indexed `keywords` array (one collection-group query) rather than a scan.
 - Message editing with an "edited" marker, and soft delete.
 - Reactions as named codes (`ack`, `agree`, `watching`, `blocker`, `done`) -
   never emoji.
@@ -64,8 +65,6 @@ runs on in-memory mock data by default and on Firebase with
   type-check.
 
 ### Known limitations
-- Search is client-side over streamed conversations; a Firestore or Algolia
-  index is the next step.
 - Voice notes are uploaded as files; there is no in-app recorder or player
   scrubbing yet.
 - `web/firebase-messaging-sw.js` needs the project identifiers from

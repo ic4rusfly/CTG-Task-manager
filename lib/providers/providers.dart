@@ -193,22 +193,25 @@ class MessageHit {
 
 final messageSearchQueryProvider = StateProvider<String>((ref) => '');
 
-final messageSearchProvider = Provider<List<MessageHit>>((ref) {
-  final query = ref.watch(messageSearchQueryProvider).trim().toLowerCase();
+/// Runs the query against the repository: an indexed Firestore collection
+/// group query in production, a scan of the in-memory data in the mock.
+final messageSearchProvider = FutureProvider<List<MessageHit>>((ref) async {
+  final query = ref.watch(messageSearchQueryProvider).trim();
   if (query.length < 2) return const [];
+
   final channels = ref.watch(channelsProvider).value ?? const <Channel>[];
-  final hits = <MessageHit>[];
-  for (final channel in channels) {
-    final messages = ref.watch(messagesProvider(channel.id)).value ?? const <Message>[];
-    for (final message in messages) {
-      if (message.deleted) continue;
-      final haystack =
-          '${message.text} ${message.attachments.map((a) => a.name).join(' ')}'.toLowerCase();
-      if (haystack.contains(query)) hits.add(MessageHit(message, channel));
-    }
-  }
-  hits.sort((a, b) => b.message.sentAt.compareTo(a.message.sentAt));
-  return hits;
+  if (channels.isEmpty) return const [];
+  final byId = {for (final c in channels) c.id: c};
+
+  final messages = await ref.watch(chatRepositoryProvider).searchMessages(
+        query: query,
+        channelIds: channels.map((c) => c.id).toList(),
+      );
+
+  return [
+    for (final m in messages)
+      if (byId[m.channelId] != null) MessageHit(m, byId[m.channelId]!),
+  ];
 });
 
 /// ---------------------------------------------------------------------------

@@ -1,3 +1,4 @@
+import '../../core/search_tokens.dart';
 import 'attachment.dart';
 import 'enums.dart';
 
@@ -61,7 +62,15 @@ class Message {
         deleted: deleted ?? this.deleted,
       );
 
+  /// Everything a full-text query should look at.
+  String get searchable =>
+      '$text ${attachments.map((a) => a.name).join(' ')}'.trim();
+
   Map<String, dynamic> toMap() => {
+        // Denormalised so a collection-group search can filter by
+        // conversation without reading every channel document.
+        'channelId': channelId,
+        'keywords': searchTokens(text, extra: attachments.map((a) => a.name)),
         'senderId': senderId,
         'sentAt': sentAt.toIso8601String(),
         'type': type.name,

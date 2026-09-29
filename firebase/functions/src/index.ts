@@ -3,6 +3,7 @@
  *
  *  onUserCreate          new member -> custom claims + join #general
  *  onMessageCreate       chat message -> FCM fan-out in each recipient's language
+ *  onMessageIndex        chat message -> keywords + channelId for search
  *  onTaskWrite           assignment / status change -> notifications + activity log
  *  dueSoonScheduler      hourly cron -> "due within 24h" reminders
  *  onEventCreate         agenda invite -> notifications
@@ -20,6 +21,7 @@ import { setGlobalOptions } from 'firebase-functions/v2';
 import * as functions from 'firebase-functions/v1';
 import { formatDate, normalizeLocale, statusLabel, t } from './i18n';
 import { deliver, fanOut, loadRecipients } from './notify';
+import { sameTokens, searchTokens } from './tokens';
 
 admin.initializeApp();
 setGlobalOptions({ region: 'europe-west1', maxInstances: 10 });
@@ -153,6 +155,31 @@ export const onMessageCreate = onDocumentCreated(
         route: `/chat/${channelId}`,
       };
     });
+  }
+);
+
+/**
+ * Keeps the search index on every message: a `keywords` array and a
+ * denormalised `channelId`, so one collection-group query serves search.
+ * Clients write both too; this repairs edits and anything written elsewhere.
+ */
+export const onMessageIndex = onDocumentWritten(
+  'channels/{channelId}/messages/{messageId}',
+  async (event) => {
+    const after = event.data?.after;
+    if (!after?.exists) return;
+
+    const data = after.data() ?? {};
+    const attachmentNames = ((data.attachments as { name?: string }[] | undefined) ?? [])
+      .map((a) => a.name ?? '')
+      .filter(Boolean);
+    const expected = searchTokens((data.text as string | undefined) ?? '', attachmentNames);
+    const stored = (data.keywords as string[] | undefined) ?? [];
+    const channelId = event.params.channelId;
+
+    if (sameTokens(stored, expected) && data.channelId === channelId) return;
+
+    await after.ref.update({ keywords: expected, channelId });
   }
 );
 

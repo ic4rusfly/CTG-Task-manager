@@ -35,6 +35,14 @@ service cloud.firestore {
       allow write: if isLead();
     }
 
+    // Collection-group search over messages. The query filters on channelId,
+    // and this rule re-checks membership of that conversation.
+    match /{path=**}/messages/{messageId} {
+      allow read: if isActive()
+        && request.auth.uid in
+           get(/databases/$(database)/documents/channels/$(resource.data.channelId)).data.memberIds;
+    }
+
     match /channels/{channelId} {
       function member() {
         return isActive() && request.auth.uid in resource.data.memberIds;
