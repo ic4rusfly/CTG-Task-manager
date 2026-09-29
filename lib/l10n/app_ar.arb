@@ -225,5 +225,11 @@
   "removeAttachment": "إزالة المرفق",
   "edit": "تعديل",
   "edited": "مُعدَّل",
-  "editMessage": "تعديل الرسالة"
+  "editMessage": "تعديل الرسالة",
+  "activityCreated": "أنشأ {name} هذه المهمة",
+  "activityStatus": "نقلها {name} إلى {status}",
+  "activityProgress": "ضبط {name} التقدم على {value} بالمئة",
+  "activityAssigned": "أسندها {name} إلى {people}",
+  "activityAttached": "أرفق {name} الملف {file}",
+  "noActivity": "لا يوجد نشاط بعد"
 }

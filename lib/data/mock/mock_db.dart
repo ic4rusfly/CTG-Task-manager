@@ -18,17 +18,22 @@ class MockDb {
   final Map<String, List<Message>> messages = {};
   final List<Task> tasks = [];
   final Map<String, List<TaskComment>> comments = {};
+  final Map<String, List<TaskActivity>> activity = {};
   final List<AgendaEvent> events = [];
   final Map<String, List<AppNotification>> notifications = {};
 
   /// Attachment bytes for the mock backend, keyed by `memory://<id>` url.
   final Map<String, Uint8List> blobs = {};
 
+  /// Who is signed in, so the mock repositories can attribute activity.
+  String? currentUserId;
+
   final _usersCtrl = StreamController<void>.broadcast();
   final _channelsCtrl = StreamController<void>.broadcast();
   final _messagesCtrl = StreamController<String>.broadcast();
   final _tasksCtrl = StreamController<void>.broadcast();
   final _commentsCtrl = StreamController<String>.broadcast();
+  final _activityCtrl = StreamController<String>.broadcast();
   final _eventsCtrl = StreamController<void>.broadcast();
   final _notificationsCtrl = StreamController<String>.broadcast();
 
@@ -37,6 +42,7 @@ class MockDb {
   void pingMessages(String channelId) => _messagesCtrl.add(channelId);
   void pingTasks() => _tasksCtrl.add(null);
   void pingComments(String taskId) => _commentsCtrl.add(taskId);
+  void pingActivity(String taskId) => _activityCtrl.add(taskId);
   void pingEvents() => _eventsCtrl.add(null);
   void pingNotifications(String uid) => _notificationsCtrl.add(uid);
 
@@ -66,6 +72,13 @@ class MockDb {
         () => List.unmodifiable(comments[taskId] ?? const <TaskComment>[]),
         where: (id) => id == taskId,
       );
+  Stream<List<TaskActivity>> watchActivity(String taskId) =>
+      _watch<List<TaskActivity>, String>(
+        _activityCtrl.stream,
+        () => List.unmodifiable(activity[taskId] ?? const <TaskActivity>[]),
+        where: (id) => id == taskId,
+      );
+
   Stream<List<AppNotification>> watchNotifications(String uid) =>
       _watch<List<AppNotification>, String>(
         _notificationsCtrl.stream,
@@ -298,6 +311,30 @@ class MockDb {
         const Duration(minutes: 45));
     msg('m41', 'c_dm_1_2', 'u2', 'Already done, assigned as a group task.', const Duration(minutes: 40));
     msg('m50', 'c_dm_2_3', 'u3', 'Sending the updated palette now.', const Duration(hours: 3));
+
+    // A seeded activity trail, so the task detail has history on day one.
+    void act(String taskId, String actorId, TaskActivityKind kind, Duration ago,
+        {String? from, String? to}) {
+      activity.putIfAbsent(taskId, () => []).add(TaskActivity(
+            id: 'a${activity.values.fold<int>(0, (n, l) => n + l.length) + 1}',
+            taskId: taskId,
+            actorId: actorId,
+            kind: kind,
+            from: from,
+            to: to,
+            at: now.subtract(ago),
+          ));
+    }
+
+    act('k1', 'u1', TaskActivityKind.created, const Duration(days: 4));
+    act('k1', 'u1', TaskActivityKind.assigned, const Duration(days: 4), to: 'u4,u5');
+    act('k1', 'u4', TaskActivityKind.status, const Duration(days: 2),
+        from: 'todo', to: 'inProgress');
+    act('k1', 'u4', TaskActivityKind.progress, const Duration(hours: 20),
+        from: '20', to: '45');
+    act('k3', 'u2', TaskActivityKind.created, const Duration(days: 3));
+    act('k3', 'u3', TaskActivityKind.status, const Duration(hours: 5),
+        from: 'inProgress', to: 'review');
 
     // Seeded read receipts: everybody has caught up on the DM, most of the
     // team has read #general, so the chat shows "Seen" and "Seen by N".

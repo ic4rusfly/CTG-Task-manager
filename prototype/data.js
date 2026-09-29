@@ -113,6 +113,16 @@
 
   const byIdLocal = (list, id) => list.find((x) => x.id === id);
 
+  // Task trail, mirroring tasks/{id}/activity.
+  const activity = [
+    { id: 'a1', task: 'k1', by: 'u1', kind: 'created', at: ago(5760) },
+    { id: 'a2', task: 'k1', by: 'u1', kind: 'assigned', to: 'u4,u5', at: ago(5760) },
+    { id: 'a3', task: 'k1', by: 'u4', kind: 'status', from: 'todo', to: 'inProgress', at: ago(2880) },
+    { id: 'a4', task: 'k1', by: 'u4', kind: 'progress', from: '20', to: '45', at: ago(1200) },
+    { id: 'a5', task: 'k3', by: 'u2', kind: 'created', at: ago(4320) },
+    { id: 'a6', task: 'k3', by: 'u3', kind: 'status', from: 'inProgress', to: 'review', at: ago(300) },
+  ];
+
   const notifications = [
     { id: 'n1', uid: 'u1', kind: 'taskStatus', title: 'Task updated', body: 'CTG-103 moved to Review', route: { view: 'tasks', task: 'k3' }, read: false, at: ago(240) },
     { id: 'n2', uid: 'u1', kind: 'dueSoon', title: 'Task due soon', body: 'CTG-102 is due within 24 hours: Fix recurring events bug', route: { view: 'tasks', task: 'k2' }, read: false, at: ago(90) },
@@ -126,5 +136,5 @@
   Object.assign(byIdLocal(channels, 'c_dm_1_2').read, { u1: ago(35), u2: ago(30) });
   Object.assign(byIdLocal(channels, 'c_tech').read, { u6: ago(60) });
 
-  window.DB = { users, teams, channels, messages, tasks, events, notifications };
+  window.DB = { users, teams, channels, messages, tasks, events, notifications, activity };
 })();

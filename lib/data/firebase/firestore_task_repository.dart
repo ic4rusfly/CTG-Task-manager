@@ -38,6 +38,17 @@ class FirestoreTaskRepository implements TaskRepository {
   }
 
   @override
+  Stream<List<TaskActivity>> watchActivity(String taskId) => _tasks
+      .doc(taskId)
+      .collection('activity')
+      .orderBy('at', descending: true)
+      .limit(50)
+      .snapshots()
+      .map((s) => s.docs
+          .map((d) => TaskActivity.fromMap(d.id, taskId, d.data()))
+          .toList());
+
+  @override
   Future<Task> createTask(Task task) async {
     final key = task.key.isEmpty ? await _nextKey() : task.key;
     final doc = _tasks.doc();

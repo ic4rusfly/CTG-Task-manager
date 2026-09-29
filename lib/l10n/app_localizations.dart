@@ -196,6 +196,7 @@ class AppLocalizations {
   String get edit => _get('edit');
   String get edited => _get('edited');
   String get editMessage => _get('editMessage');
+  String get noActivity => _get('noActivity');
 
   String minutesAgo(int count) {
     var s = _get('minutesAgo');
@@ -253,6 +254,35 @@ class AppLocalizations {
     return s;
   }
   String seenByCount(int count) => _plural('seenByCount', count);
+  String activityCreated(Object name) {
+    var s = _get('activityCreated');
+    s = s.replaceAll('{name}', '$name');
+    return s;
+  }
+  String activityStatus(Object name, Object status) {
+    var s = _get('activityStatus');
+    s = s.replaceAll('{name}', '$name');
+    s = s.replaceAll('{status}', '$status');
+    return s;
+  }
+  String activityProgress(Object name, Object value) {
+    var s = _get('activityProgress');
+    s = s.replaceAll('{name}', '$name');
+    s = s.replaceAll('{value}', '$value');
+    return s;
+  }
+  String activityAssigned(Object name, Object people) {
+    var s = _get('activityAssigned');
+    s = s.replaceAll('{name}', '$name');
+    s = s.replaceAll('{people}', '$people');
+    return s;
+  }
+  String activityAttached(Object name, Object file) {
+    var s = _get('activityAttached');
+    s = s.replaceAll('{name}', '$name');
+    s = s.replaceAll('{file}', '$file');
+    return s;
+  }
 
   /// Minimal ICU plural support for the few plural keys we use.
   String _plural(String key, int count) {
@@ -487,6 +517,12 @@ const _strings = <String, Map<String, String>>{
     'edit': 'Edit',
     'edited': 'edited',
     'editMessage': 'Edit message',
+    'activityCreated': '{name} created this task',
+    'activityStatus': '{name} moved it to {status}',
+    'activityProgress': '{name} set progress to {value} percent',
+    'activityAssigned': '{name} assigned {people}',
+    'activityAttached': '{name} attached {file}',
+    'noActivity': 'No activity yet',
   },
   'fr': <String, String>{
     'appName': 'CTG Hub',
@@ -673,6 +709,12 @@ const _strings = <String, Map<String, String>>{
     'edit': 'Modifier',
     'edited': 'modifié',
     'editMessage': 'Modifier le message',
+    'activityCreated': '{name} a créé cette tâche',
+    'activityStatus': '{name} l\'a déplacée vers {status}',
+    'activityProgress': '{name} a mis l\'avancement à {value} pour cent',
+    'activityAssigned': '{name} a assigné {people}',
+    'activityAttached': '{name} a joint {file}',
+    'noActivity': 'Aucune activité',
   },
   'ar': <String, String>{
     'appName': 'مركز CTG',
@@ -859,5 +901,11 @@ const _strings = <String, Map<String, String>>{
     'edit': 'تعديل',
     'edited': 'مُعدَّل',
     'editMessage': 'تعديل الرسالة',
+    'activityCreated': 'أنشأ {name} هذه المهمة',
+    'activityStatus': 'نقلها {name} إلى {status}',
+    'activityProgress': 'ضبط {name} التقدم على {value} بالمئة',
+    'activityAssigned': 'أسندها {name} إلى {people}',
+    'activityAttached': 'أرفق {name} الملف {file}',
+    'noActivity': 'لا يوجد نشاط بعد',
   },
 };

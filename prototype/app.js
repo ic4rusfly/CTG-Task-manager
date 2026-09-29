@@ -134,6 +134,8 @@ const ICONS = {
   bell: svg('<path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>'),
   thread: svg('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/>'),
   bellOff: svg('<path d="M13.7 21a2 2 0 0 1-3.4 0"/><path d="M18.6 13A17 17 0 0 1 18 8a6 6 0 0 0-9.3-5"/><path d="M6.3 6.3A6 6 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M2 2l20 20"/>'),
+  plus: svg('<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>'),
+  chart: svg('<path d="M3 17l6-6 4 4 7-7"/><path d="M14 8h6v6"/>'),
   edit: svg('<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>'),
   check: svg('<path d="M4 12l5 5L20 6"/>'),
   at: svg('<circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/>'),
@@ -213,6 +215,29 @@ function withMentions(text) {
   out += esc(text.slice(cursor));
   return out;
 }
+
+const taskActivity = (taskId) =>
+  DB.activity.filter((a) => a.task === taskId).sort((x, y) => y.at - x.at);
+
+function logActivity(taskId, kind, extra = {}) {
+  DB.activity.push({ id: uid('a'), task: taskId, by: state.me, kind, at: new Date(), ...extra });
+}
+
+/** One trail entry, in the reader's language. */
+function activityLine(a) {
+  const who = userName(a.by);
+  switch (a.kind) {
+    case 'created': return t('activityCreated', { name: who });
+    case 'status': return t('activityStatus', {
+      name: who, status: t('status' + a.to[0].toUpperCase() + a.to.slice(1)) });
+    case 'progress': return t('activityProgress', { name: who, value: a.to });
+    case 'assigned': return t('activityAssigned', {
+      name: who, people: String(a.to || '').split(',').filter(Boolean).map(userName).join(', ') });
+    default: return t('activityAttached', { name: who, file: a.to || '' });
+  }
+}
+
+const ACTIVITY_ICON = { created: 'plus', status: 'swap', progress: 'chart', assigned: 'assign', attachment: 'file' };
 
 const isMuted = (channelId) => (me().muted || []).includes(channelId);
 
@@ -739,6 +764,14 @@ function taskPanel(task) {
                 <span class="muted"> ${esc(relative(c.at))}</span></div>
                 <div>${esc(c.text)}</div></div>
             </div>`).join('') || `<div class="small muted">-</div>`}
+          <div class="section-title">${esc(t('activity'))}</div>
+          ${taskActivity(task.id).length ? taskActivity(task.id).map((a) => `
+            <div class="row small" style="padding:4px 0;align-items:flex-start">
+              <span style="color:var(--text-dim)">${ICONS[ACTIVITY_ICON[a.kind]] || ICONS.swap}</span>
+              <span class="grow">${esc(activityLine(a))}</span>
+              <span class="muted">${esc(relative(a.at))}</span>
+            </div>`).join('') : `<div class="small muted">${esc(t('noActivity'))}</div>`}
+
           <div class="row" style="margin-top:10px">
             <input type="text" id="comment-input" placeholder="${esc(t('addComment'))}">
             <button class="btn primary" data-act="add-comment" data-id="${task.id}">${ICONS.send}</button>
@@ -1162,6 +1195,7 @@ function uploadFile(file, kind, taskId) {
         if (taskId) {
           const task = byId(DB.tasks, taskId);
           task.files = [...(task.files || []), attachment];
+          logActivity(taskId, 'attachment', { to: attachment.name });
           render();
           return;
         }
@@ -1292,6 +1326,7 @@ function handle(act, el) {
     case 'close-panel': state.taskOpen = null; break;
     case 'set-status': {
       const task = byId(DB.tasks, id);
+      if (task.status !== code) logActivity(task.id, 'status', { from: task.status, to: code });
       task.status = code;
       if (code === 'done') task.progress = 100;
       break;
@@ -1592,6 +1627,9 @@ function afterRender() {
       col.classList.remove('over');
       const task = byId(DB.tasks, e.dataTransfer.getData('text/plain'));
       if (!task) return;
+      if (task.status !== col.dataset.drop) {
+        logActivity(task.id, 'status', { from: task.status, to: col.dataset.drop });
+      }
       task.status = col.dataset.drop;
       if (task.status === 'done') task.progress = 100;
       render();
@@ -1620,6 +1658,9 @@ document.addEventListener('input', (e) => {
   const target = e.target.closest('[data-act="progress"]');
   if (!target) return;
   const task = byId(DB.tasks, target.dataset.id);
+  if (task.progress !== Number(target.value)) {
+    logActivity(task.id, 'progress', { from: String(task.progress), to: target.value });
+  }
   task.progress = Number(target.value);
   if (task.progress === 100) task.status = 'done';
   else if (task.status === 'done') task.status = 'inProgress';

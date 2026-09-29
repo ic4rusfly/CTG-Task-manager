@@ -184,7 +184,13 @@ window.I18N = {
     "removeAttachment": "Remove attachment",
     "edit": "Edit",
     "edited": "edited",
-    "editMessage": "Edit message"
+    "editMessage": "Edit message",
+    "activityCreated": "{name} created this task",
+    "activityStatus": "{name} moved it to {status}",
+    "activityProgress": "{name} set progress to {value} percent",
+    "activityAssigned": "{name} assigned {people}",
+    "activityAttached": "{name} attached {file}",
+    "noActivity": "No activity yet"
   },
   "fr": {
     "appName": "CTG Hub",
@@ -370,7 +376,13 @@ window.I18N = {
     "removeAttachment": "Retirer la pièce jointe",
     "edit": "Modifier",
     "edited": "modifié",
-    "editMessage": "Modifier le message"
+    "editMessage": "Modifier le message",
+    "activityCreated": "{name} a créé cette tâche",
+    "activityStatus": "{name} l'a déplacée vers {status}",
+    "activityProgress": "{name} a mis l'avancement à {value} pour cent",
+    "activityAssigned": "{name} a assigné {people}",
+    "activityAttached": "{name} a joint {file}",
+    "noActivity": "Aucune activité"
   },
   "ar": {
     "appName": "مركز CTG",
@@ -556,6 +568,12 @@ window.I18N = {
     "removeAttachment": "إزالة المرفق",
     "edit": "تعديل",
     "edited": "مُعدَّل",
-    "editMessage": "تعديل الرسالة"
+    "editMessage": "تعديل الرسالة",
+    "activityCreated": "أنشأ {name} هذه المهمة",
+    "activityStatus": "نقلها {name} إلى {status}",
+    "activityProgress": "ضبط {name} التقدم على {value} بالمئة",
+    "activityAssigned": "أسندها {name} إلى {people}",
+    "activityAttached": "أرفق {name} الملف {file}",
+    "noActivity": "لا يوجد نشاط بعد"
   }
 };

@@ -291,5 +291,58 @@
   "removeAttachment": "Remove attachment",
   "edit": "Edit",
   "edited": "edited",
-  "editMessage": "Edit message"
+  "editMessage": "Edit message",
+  "activityCreated": "{name} created this task",
+  "@activityCreated": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "activityStatus": "{name} moved it to {status}",
+  "@activityStatus": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "activityProgress": "{name} set progress to {value} percent",
+  "@activityProgress": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "activityAssigned": "{name} assigned {people}",
+  "@activityAssigned": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "people": {
+        "type": "String"
+      }
+    }
+  },
+  "activityAttached": "{name} attached {file}",
+  "@activityAttached": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "file": {
+        "type": "String"
+      }
+    }
+  },
+  "noActivity": "No activity yet"
 }

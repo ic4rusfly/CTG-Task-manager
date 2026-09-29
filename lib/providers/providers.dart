@@ -163,6 +163,11 @@ final taskCommentsProvider =
   return ref.watch(taskRepositoryProvider).watchComments(taskId);
 });
 
+final taskActivityProvider =
+    StreamProvider.family<List<TaskActivity>, String>((ref, taskId) {
+  return ref.watch(taskRepositoryProvider).watchActivity(taskId);
+});
+
 final eventsProvider = StreamProvider<List<AgendaEvent>>(
   (ref) => ref.watch(agendaRepositoryProvider).watchEvents(),
 );

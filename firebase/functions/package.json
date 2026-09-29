@@ -1,6 +1,6 @@
 {
   "name": "ctg-hub-functions",
-  "version": "0.1.0",
+  "version": "0.1.0-b",
   "private": true,
   "description": "CTG Hub Cloud Functions: notifications, group assignment, onboarding.",
   "main": "lib/index.js",

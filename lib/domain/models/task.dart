@@ -216,3 +216,54 @@ class TaskComment {
         createdAt: DateTime.tryParse(map['createdAt'] as String? ?? '') ?? DateTime.now(),
       );
 }
+
+/// What happened to a task, as written by the Cloud Functions in production
+/// and by the mock repository in the demo build (`tasks/{id}/activity`).
+enum TaskActivityKind { created, status, progress, assigned, attachment }
+
+TaskActivityKind taskActivityKindFrom(String? value) =>
+    TaskActivityKind.values.firstWhere(
+      (k) => k.name == value,
+      orElse: () => TaskActivityKind.status,
+    );
+
+class TaskActivity {
+  const TaskActivity({
+    required this.id,
+    required this.taskId,
+    required this.actorId,
+    required this.kind,
+    required this.at,
+    this.from,
+    this.to,
+  });
+
+  final String id;
+  final String taskId;
+  final String actorId;
+  final TaskActivityKind kind;
+  final DateTime at;
+
+  /// Previous and new value, kept as text so one shape fits every kind.
+  final String? from;
+  final String? to;
+
+  Map<String, dynamic> toMap() => {
+        'actorId': actorId,
+        'kind': kind.name,
+        'from': from,
+        'to': to,
+        'at': at.toIso8601String(),
+      };
+
+  factory TaskActivity.fromMap(String id, String taskId, Map<String, dynamic> map) =>
+      TaskActivity(
+        id: id,
+        taskId: taskId,
+        actorId: map['actorId'] as String? ?? '',
+        kind: taskActivityKindFrom(map['kind'] as String?),
+        from: map['from']?.toString(),
+        to: map['to']?.toString(),
+        at: DateTime.tryParse(map['at']?.toString() ?? '') ?? DateTime.now(),
+      );
+}

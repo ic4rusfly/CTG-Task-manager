@@ -179,6 +179,23 @@ uploadRun().then(() => {
   click('[data-act="task-attach"]');
   ok(taskPickerOpened, 'the task attach action opens the file picker');
 
+  // ---------------------------------------------------------- task trail ---
+  click('[data-act="close-panel"]');
+  fire(doc.querySelector('[data-act="open-task"][data-id="k1"]'));
+  const trailBefore = doc.querySelectorAll('.panel .row.small').length;
+  ok(trailBefore >= 4, `the seeded task trail is shown (${trailBefore} entries)`);
+  click('[data-act="set-status"][data-code="done"]');
+  fire(doc.querySelector('[data-act="open-task"][data-id="k1"]'));
+  ok(
+    doc.querySelectorAll('.panel .row.small').length === trailBefore + 1,
+    'moving the task adds a trail entry'
+  );
+  const movedLabel = w.I18N.fr.activityStatus.split('{name}')[1].split('{status}')[0].trim();
+  ok(
+    doc.querySelector('.panel').textContent.includes(movedLabel),
+    'the trail entry is written in the reader language'
+  );
+
   // ------------------------------------------------------- mute and seen ----
   click('.nav-item[data-id="chat"]');
   click('[data-act="channel"][data-id="c_general"]');

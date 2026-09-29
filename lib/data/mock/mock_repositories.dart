@@ -35,6 +35,7 @@ class MockAuthRepository implements AuthRepository {
     );
     if (!user.active) throw Exception('user-disabled');
     _current = user;
+    _db.currentUserId = user.id;
     _ctrl.add(user);
     return user;
   }
@@ -43,6 +44,7 @@ class MockAuthRepository implements AuthRepository {
   Future<AppUser> signInAs(String uid) async {
     final user = _db.users.firstWhere((u) => u.id == uid);
     _current = user;
+    _db.currentUserId = user.id;
     _ctrl.add(user);
     return user;
   }
@@ -56,6 +58,7 @@ class MockAuthRepository implements AuthRepository {
   @override
   Future<void> signOut() async {
     _current = null;
+    _db.currentUserId = null;
     _ctrl.add(null);
   }
 }
@@ -326,6 +329,25 @@ class MockTaskRepository implements TaskRepository {
   Stream<List<TaskComment>> watchComments(String taskId) => _db.watchComments(taskId);
 
   @override
+  Stream<List<TaskActivity>> watchActivity(String taskId) => _db
+      .watchActivity(taskId)
+      .map((list) => [...list]..sort((a, b) => b.at.compareTo(a.at)));
+
+  /// Appends one entry to the task trail, attributed to whoever is signed in.
+  void _log(String taskId, TaskActivityKind kind, {String? from, String? to, String? actorId}) {
+    _db.activity.putIfAbsent(taskId, () => []).add(TaskActivity(
+          id: _id('a'),
+          taskId: taskId,
+          actorId: actorId ?? _db.currentUserId ?? '',
+          kind: kind,
+          from: from,
+          to: to,
+          at: DateTime.now(),
+        ));
+    _db.pingActivity(taskId);
+  }
+
+  @override
   Future<Task> createTask(Task task) async {
     final created = Task(
       id: task.id.isEmpty ? _id('k') : task.id,
@@ -352,6 +374,11 @@ class MockTaskRepository implements TaskRepository {
     );
     _db.tasks.add(created);
     _db.pingTasks();
+    _log(created.id, TaskActivityKind.created, actorId: created.reporterId);
+    if (created.assigneeIds.isNotEmpty) {
+      _log(created.id, TaskActivityKind.assigned,
+          to: created.assigneeIds.join(','), actorId: created.reporterId);
+    }
     await _notifier?.taskAssigned(
       recipientIds: created.assigneeIds,
       actorId: created.reporterId,
@@ -429,6 +456,9 @@ class MockTaskRepository implements TaskRepository {
   @override
   Future<void> setStatus(String taskId, TaskStatus status) async {
     final t = _db.tasks.firstWhere((t) => t.id == taskId);
+    if (t.status != status) {
+      _log(taskId, TaskActivityKind.status, from: t.status.name, to: status.name);
+    }
     _replace(t.copyWith(
       status: status,
       progress: status == TaskStatus.done ? 100 : t.progress,
@@ -441,6 +471,9 @@ class MockTaskRepository implements TaskRepository {
   Future<void> setProgress(String taskId, int progress) async {
     final t = _db.tasks.firstWhere((t) => t.id == taskId);
     final clamped = progress.clamp(0, 100);
+    if (t.progress != clamped) {
+      _log(taskId, TaskActivityKind.progress, from: '${t.progress}', to: '$clamped');
+    }
     _replace(t.copyWith(
       progress: clamped,
       status: clamped == 100
@@ -482,6 +515,7 @@ class MockTaskRepository implements TaskRepository {
       updatedAt: DateTime.now(),
     );
     _db.pingTasks();
+    _log(taskId, TaskActivityKind.attachment, to: attachment.name);
   }
 
   @override

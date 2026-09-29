@@ -1,5 +1,7 @@
 # CTG Hub
 
+**Version 0.1b** - see [`CHANGELOG.md`](CHANGELOG.md).
+
 One app for CTG members: **team chat** (Slack-like), **task management** (Jira-like) and a
 **shared agenda** — in Arabic, French and English, on Android, iOS, web and desktop.
 
@@ -112,6 +114,14 @@ manage members as admin, and switch language (including RTL Arabic) and theme.
   `channels/{id}.lastReadAt`: **Sent**, **Seen**, or **Seen by N members**.
   `lib/core/receipts.dart` holds that logic, so it is unit-tested without a
   widget.
+
+## Task activity
+
+Every task keeps a trail in `tasks/{taskId}/activity`: created, assigned,
+status moves, progress changes and attachments, each attributed to a member
+and rendered in the reader's language at the bottom of the task detail. The
+Cloud Functions write the same documents in production, so the feed is
+identical on both backends.
 
 ## Push notifications
 

@@ -124,6 +124,76 @@ void main() {
   group('push', pushTests);
   group('mute and receipts', muteAndReceiptTests);
   group('editing and task files', editAndTaskFileTests);
+  group('task activity', activityTests);
+}
+
+// ---------------------------------------------------------------------------
+// The task trail, written by the repository the same way the Cloud Functions
+// write tasks/{id}/activity in production.
+// ---------------------------------------------------------------------------
+void activityTests() {
+  late MockDb db;
+  late MockTaskRepository tasks;
+  late MockMediaRepository media;
+
+  setUp(() {
+    db = MockDb();
+    db.currentUserId = 'u2';
+    tasks = MockTaskRepository(db);
+    media = MockMediaRepository(db);
+  });
+
+  test('the seeded trail is newest first', () async {
+    final trail = await tasks.watchActivity('k1').first;
+    expect(trail, isNotEmpty);
+    expect(trail.first.at.isAfter(trail.last.at), isTrue);
+    expect(trail.last.kind, TaskActivityKind.created);
+  });
+
+  test('a status change is recorded with both values', () async {
+    final before = (await tasks.watchActivity('k1').first).length;
+    await tasks.setStatus('k1', TaskStatus.done);
+    final trail = await tasks.watchActivity('k1').first;
+
+    expect(trail, hasLength(before + 1));
+    expect(trail.first.kind, TaskActivityKind.status);
+    expect(trail.first.to, 'done');
+    expect(trail.first.actorId, 'u2');
+  });
+
+  test('setting the same status again records nothing', () async {
+    await tasks.setStatus('k1', TaskStatus.done);
+    final after = (await tasks.watchActivity('k1').first).length;
+    await tasks.setStatus('k1', TaskStatus.done);
+    expect(await tasks.watchActivity('k1').first, hasLength(after));
+  });
+
+  test('creating a task logs creation and assignment', () async {
+    final created = await tasks.createTask(Task(
+      id: '',
+      key: '',
+      title: 'Book the venue',
+      reporterId: 'u1',
+      assigneeIds: const ['u4'],
+      createdAt: DateTime.now(),
+    ));
+    final trail = await tasks.watchActivity(created.id).first;
+    expect(trail.map((a) => a.kind),
+        containsAll([TaskActivityKind.created, TaskActivityKind.assigned]));
+  });
+
+  test('attaching a file shows up in the trail', () async {
+    final attachment = await media.upload(
+      folder: 'tasks/k2',
+      fileName: 'venue.pdf',
+      mime: 'application/pdf',
+      bytes: Uint8List.fromList([1, 2, 3]),
+    );
+    await tasks.addAttachment('k2', attachment);
+    final trail = await tasks.watchActivity('k2').first;
+    expect(trail.first.kind, TaskActivityKind.attachment);
+    expect(trail.first.to, 'venue.pdf');
+  });
 }
 
 // ---------------------------------------------------------------------------

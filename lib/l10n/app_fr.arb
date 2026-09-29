@@ -225,5 +225,11 @@
   "removeAttachment": "Retirer la pièce jointe",
   "edit": "Modifier",
   "edited": "modifié",
-  "editMessage": "Modifier le message"
+  "editMessage": "Modifier le message",
+  "activityCreated": "{name} a créé cette tâche",
+  "activityStatus": "{name} l'a déplacée vers {status}",
+  "activityProgress": "{name} a mis l'avancement à {value} pour cent",
+  "activityAssigned": "{name} a assigné {people}",
+  "activityAttached": "{name} a joint {file}",
+  "noActivity": "Aucune activité"
 }

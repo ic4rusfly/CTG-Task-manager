@@ -47,6 +47,8 @@ abstract class ChatRepository {
 abstract class TaskRepository {
   Stream<List<Task>> watchTasks();
   Stream<List<TaskComment>> watchComments(String taskId);
+  /// Newest-first trail of what happened to a task.
+  Stream<List<TaskActivity>> watchActivity(String taskId);
   Future<Task> createTask(Task task);
   /// Assign one task to many people, or clone it once per person.
   Future<List<Task>> assignToGroup({

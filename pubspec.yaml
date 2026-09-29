@@ -1,7 +1,7 @@
 name: ctg_hub
 description: CTG Hub — team chat, task management and a shared agenda for CTG members.
 publish_to: "none"
-version: 0.1.0+1
+version: 0.1.0-b+2
 
 environment:
   sdk: ">=3.3.0 <4.0.0"

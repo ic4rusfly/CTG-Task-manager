@@ -84,6 +84,8 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     final me = ref.watch(currentUserProvider);
     final usersById = ref.watch(usersByIdProvider);
     final comments = ref.watch(taskCommentsProvider(widget.taskId)).value ?? const <TaskComment>[];
+    final activity =
+        ref.watch(taskActivityProvider(widget.taskId)).value ?? const <TaskActivity>[];
 
     if (task == null) {
       return Scaffold(
@@ -312,6 +314,11 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
               ),
             ],
           ),
+          const SizedBox(height: 22),
+          Text(t.activity, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          _ActivityList(entries: activity),
+          const SizedBox(height: 24),
         ],
       ),
     );
@@ -353,6 +360,79 @@ class _PeopleRow extends StatelessWidget {
 }
 
 /// One file on a task: thumbnail for pictures, icon for everything else.
+/// The task trail: created, assigned, status, progress and attachments.
+class _ActivityList extends ConsumerWidget {
+  const _ActivityList({required this.entries});
+
+  final List<TaskActivity> entries;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = tr(context);
+    final locale = Localizations.localeOf(context).languageCode;
+    final usersById = ref.watch(usersByIdProvider);
+    final scheme = Theme.of(context).colorScheme;
+
+    if (entries.isEmpty) {
+      return Text(t.noActivity, style: Theme.of(context).textTheme.bodySmall);
+    }
+
+    String nameOf(String id) => usersById[id]?.displayName ?? t.unknownUser;
+
+    String describe(TaskActivity a) {
+      final who = nameOf(a.actorId);
+      switch (a.kind) {
+        case TaskActivityKind.created:
+          return t.activityCreated(who);
+        case TaskActivityKind.status:
+          return t.activityStatus(who, statusLabel(t, taskStatusFrom(a.to)));
+        case TaskActivityKind.progress:
+          return t.activityProgress(who, a.to ?? '0');
+        case TaskActivityKind.assigned:
+          final people = (a.to ?? '')
+              .split(',')
+              .where((id) => id.isNotEmpty)
+              .map(nameOf)
+              .join(', ');
+          return t.activityAssigned(who, people);
+        case TaskActivityKind.attachment:
+          return t.activityAttached(who, a.to ?? '');
+      }
+    }
+
+    IconData iconOf(TaskActivityKind kind) => switch (kind) {
+          TaskActivityKind.created => Icons.add_circle_outline,
+          TaskActivityKind.status => Icons.swap_horiz,
+          TaskActivityKind.progress => Icons.trending_up,
+          TaskActivityKind.assigned => Icons.person_add_alt,
+          TaskActivityKind.attachment => Icons.attach_file,
+        };
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final a in entries)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(iconOf(a.kind), size: 16, color: scheme.outline),
+                const SizedBox(width: 10),
+                Expanded(child: Text(describe(a))),
+                const SizedBox(width: 8),
+                Text(
+                  formatRelative(a.at, locale, t),
+                  style: Theme.of(context).textTheme.labelSmall,
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 class _AttachmentTile extends ConsumerWidget {
   const _AttachmentTile({required this.attachment, this.onRemove});
 
