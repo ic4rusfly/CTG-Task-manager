@@ -1,0 +1,12 @@
+{
+  "name": "ctg-hub-prototype-smoke",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Headless smoke test for the clickable prototype.",
+  "scripts": {
+    "smoke": "node prototype_smoke.js"
+  },
+  "devDependencies": {
+    "jsdom": "^25.0.1"
+  }
+}

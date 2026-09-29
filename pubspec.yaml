@@ -1,0 +1,46 @@
+name: ctg_hub
+description: CTG Hub — team chat, task management and a shared agenda for CTG members.
+publish_to: "none"
+version: 0.1.0-b+2
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: any
+  flutter_riverpod: ^2.5.1
+  go_router: ^14.2.0
+  collection: ^1.18.0
+  uuid: ^4.4.0
+
+  # Backend (used when the app runs with --dart-define=BACKEND=firebase).
+  # The default build still runs entirely on the in-memory mock repositories.
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.1
+  cloud_firestore: ^5.4.3
+  firebase_storage: ^12.3.2
+
+  # File picking for chat attachments. Works on mobile, web and desktop and
+  # hands back bytes, so the same upload path serves every platform.
+  file_picker: ^8.1.2
+
+  # Push notifications. registerDevice / unregisterDevice are callables, so
+  # the client never writes to users/{uid}.fcmTokens itself.
+  firebase_messaging: ^15.1.3
+  cloud_functions: ^5.1.3
+
+  # Phase 3 (link previews) - uncomment when those features land.
+  # cached_network_image: ^3.4.1
+  # url_launcher: ^6.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true

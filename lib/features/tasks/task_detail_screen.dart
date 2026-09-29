@@ -1,0 +1,489 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../core/attachment_picker.dart';
+import '../../core/formatters.dart';
+import '../../core/labels.dart';
+import '../../core/theme.dart';
+import '../../domain/models/models.dart';
+import '../../domain/repositories/repositories.dart';
+import '../../providers/providers.dart';
+import '../../widgets/common.dart';
+
+class TaskDetailScreen extends ConsumerStatefulWidget {
+  const TaskDetailScreen({super.key, required this.taskId});
+
+  final String taskId;
+
+  @override
+  ConsumerState<TaskDetailScreen> createState() => _TaskDetailScreenState();
+}
+
+class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
+  final _comment = TextEditingController();
+
+  double? _uploadProgress;
+  String? _uploadName;
+  String? _uploadError;
+
+  /// Picks a file, uploads it to `tasks/{taskId}` and attaches it.
+  Future<void> _attach() async {
+    final t = tr(context);
+    final picked = await pickAttachment(PickKind.any);
+    if (picked == null || !mounted) return;
+    setState(() {
+      _uploadName = picked.name;
+      _uploadProgress = 0;
+      _uploadError = null;
+    });
+    try {
+      final attachment = await ref.read(mediaRepositoryProvider).upload(
+            folder: 'tasks/${widget.taskId}',
+            fileName: picked.name,
+            mime: picked.mime,
+            bytes: picked.bytes,
+            onProgress: (value) {
+              if (mounted) setState(() => _uploadProgress = value);
+            },
+          );
+      await ref.read(taskRepositoryProvider).addAttachment(widget.taskId, attachment);
+      if (mounted) {
+        setState(() {
+          _uploadProgress = null;
+          _uploadName = null;
+        });
+      }
+    } on MediaTooLargeException {
+      if (!mounted) return;
+      setState(() {
+        _uploadProgress = null;
+        _uploadName = null;
+        _uploadError = t.fileTooLarge(readableBytes(MediaRepository.maxBytes));
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _uploadProgress = null;
+        _uploadName = null;
+        _uploadError = t.uploadFailed;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _comment.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = tr(context);
+    final locale = Localizations.localeOf(context).languageCode;
+    final task = ref.watch(taskProvider(widget.taskId));
+    final me = ref.watch(currentUserProvider);
+    final usersById = ref.watch(usersByIdProvider);
+    final comments = ref.watch(taskCommentsProvider(widget.taskId)).value ?? const <TaskComment>[];
+    final activity =
+        ref.watch(taskActivityProvider(widget.taskId)).value ?? const <TaskActivity>[];
+
+    if (task == null) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: EmptyState(icon: Icons.search_off, message: t.noTasks),
+      );
+    }
+
+    final repo = ref.read(taskRepositoryProvider);
+    final canEdit = (me?.canAssign ?? false) || task.assigneeIds.contains(me?.id);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(task.key),
+        actions: [
+          if (me?.isAdmin ?? false)
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              tooltip: t.delete,
+              onPressed: () async {
+                await repo.deleteTask(task.id);
+                if (context.mounted) Navigator.of(context).maybePop();
+              },
+            ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        children: [
+          Text(task.title, style: Theme.of(context).textTheme.headlineSmall),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              StatusChip(
+                label: statusLabel(t, task.status),
+                color: CtgColors.statusColors[task.status]!,
+                dense: false,
+              ),
+              StatusChip(
+                label: priorityLabel(t, task.priority),
+                color: CtgColors.priorityColors[task.priority]!,
+                dense: false,
+              ),
+              StatusChip(
+                label: typeLabel(t, task.type),
+                color: Theme.of(context).colorScheme.outline,
+                dense: false,
+              ),
+              if (task.dueAt != null)
+                StatusChip(
+                  icon: Icons.event_outlined,
+                  label: formatDay(task.dueAt!, locale),
+                  color: task.isOverdue ? CtgColors.maroon : Theme.of(context).colorScheme.outline,
+                  dense: false,
+                ),
+              if (task.groupAssignmentId != null)
+                StatusChip(
+                  icon: Icons.groups_outlined,
+                  label: t.assignToGroup,
+                  color: CtgColors.chocolate,
+                  dense: false,
+                ),
+            ],
+          ),
+          if (task.description.isNotEmpty) ...[
+            const SizedBox(height: 18),
+            Text(task.description, style: Theme.of(context).textTheme.bodyMedium),
+          ],
+          const SizedBox(height: 22),
+          Text('${t.progress} · ${task.effectiveProgress}%',
+              style: Theme.of(context).textTheme.labelLarge),
+          Slider(
+            value: task.effectiveProgress.toDouble(),
+            max: 100,
+            divisions: 20,
+            label: '${task.effectiveProgress}%',
+            onChanged: canEdit && task.checklist.isEmpty
+                ? (v) => repo.setProgress(task.id, v.round())
+                : null,
+          ),
+          if (task.checklist.isNotEmpty)
+            Text(
+              '${t.checklist} — ${task.checklistDone}/${task.checklist.length}',
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
+          const SizedBox(height: 10),
+          Text(t.status, style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final s in TaskStatus.values)
+                ChoiceChip(
+                  selected: task.status == s,
+                  label: Text(statusLabel(t, s)),
+                  onSelected: canEdit ? (_) => repo.setStatus(task.id, s) : null,
+                ),
+            ],
+          ),
+          const SizedBox(height: 22),
+          _PeopleRow(
+            label: t.assignees,
+            users: task.assigneeIds.map((id) => usersById[id]).whereType<AppUser>().toList(),
+          ),
+          const SizedBox(height: 10),
+          _PeopleRow(
+            label: t.reporter,
+            users: [usersById[task.reporterId]].whereType<AppUser>().toList(),
+          ),
+          if (task.checklist.isNotEmpty) ...[
+            const SizedBox(height: 22),
+            Text(t.checklist, style: Theme.of(context).textTheme.titleMedium),
+            for (final item in task.checklist)
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                value: item.done,
+                title: Text(
+                  item.text,
+                  style: TextStyle(
+                    decoration: item.done ? TextDecoration.lineThrough : null,
+                  ),
+                ),
+                onChanged: canEdit ? (_) => repo.toggleChecklistItem(task.id, item.id) : null,
+              ),
+          ],
+          const SizedBox(height: 22),
+          Row(
+            children: [
+              Text(t.attachments, style: Theme.of(context).textTheme.titleMedium),
+              const Spacer(),
+              if (canEdit)
+                TextButton.icon(
+                  onPressed: _uploadProgress == null ? _attach : null,
+                  icon: const Icon(Icons.attach_file, size: 18),
+                  label: Text(t.addAttachment),
+                ),
+            ],
+          ),
+          if (_uploadProgress != null) ...[
+            Text('${t.uploading}  ${_uploadName ?? ''}',
+                style: Theme.of(context).textTheme.labelSmall),
+            const SizedBox(height: 4),
+            LinearProgressIndicator(value: _uploadProgress),
+          ],
+          if (_uploadError != null)
+            Text(
+              _uploadError!,
+              style: Theme.of(context)
+                  .textTheme
+                  .labelSmall
+                  ?.copyWith(color: Theme.of(context).colorScheme.error),
+            ),
+          if (task.attachments.isEmpty && _uploadProgress == null)
+            Text(t.noAttachments, style: Theme.of(context).textTheme.bodySmall)
+          else
+            for (final a in task.attachments)
+              _AttachmentTile(
+                attachment: a,
+                onRemove: canEdit
+                    ? () => ref
+                        .read(taskRepositoryProvider)
+                        .removeAttachment(task.id, a.url)
+                    : null,
+              ),
+          const SizedBox(height: 22),
+          Text(t.comments, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          if (comments.isEmpty)
+            Text('—', style: Theme.of(context).textTheme.bodySmall)
+          else
+            for (final c in comments)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    UserAvatar(user: usersById[c.authorId], size: 32),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(usersById[c.authorId]?.displayName ?? '',
+                                  style: const TextStyle(fontWeight: FontWeight.w600)),
+                              const SizedBox(width: 8),
+                              Text(formatRelative(c.createdAt, locale, t),
+                                  style: Theme.of(context).textTheme.labelSmall),
+                            ],
+                          ),
+                          Text(c.text),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _comment,
+                  decoration: InputDecoration(hintText: t.addComment, isDense: true),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filled(
+                icon: const Icon(Icons.send),
+                onPressed: () {
+                  if (_comment.text.trim().isEmpty || me == null) return;
+                  repo.addComment(TaskComment(
+                    id: '',
+                    taskId: task.id,
+                    authorId: me.id,
+                    text: _comment.text.trim(),
+                    createdAt: DateTime.now(),
+                  ));
+                  _comment.clear();
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 22),
+          Text(t.activity, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          _ActivityList(entries: activity),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+}
+
+class _PeopleRow extends StatelessWidget {
+  const _PeopleRow({required this.label, required this.users});
+
+  final String label;
+  final List<AppUser> users;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 110,
+          child: Text(label, style: Theme.of(context).textTheme.labelLarge),
+        ),
+        Expanded(
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              for (final u in users)
+                Chip(
+                  avatar: UserAvatar(user: u, size: 20),
+                  label: Text(u.displayName),
+                  visualDensity: VisualDensity.compact,
+                ),
+              if (users.isEmpty) const Text('—'),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// One file on a task: thumbnail for pictures, icon for everything else.
+/// The task trail: created, assigned, status, progress and attachments.
+class _ActivityList extends ConsumerWidget {
+  const _ActivityList({required this.entries});
+
+  final List<TaskActivity> entries;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = tr(context);
+    final locale = Localizations.localeOf(context).languageCode;
+    final usersById = ref.watch(usersByIdProvider);
+    final scheme = Theme.of(context).colorScheme;
+
+    if (entries.isEmpty) {
+      return Text(t.noActivity, style: Theme.of(context).textTheme.bodySmall);
+    }
+
+    String nameOf(String id) => usersById[id]?.displayName ?? t.unknownUser;
+
+    String describe(TaskActivity a) {
+      final who = nameOf(a.actorId);
+      switch (a.kind) {
+        case TaskActivityKind.created:
+          return t.activityCreated(who);
+        case TaskActivityKind.status:
+          return t.activityStatus(who, statusLabel(t, taskStatusFrom(a.to)));
+        case TaskActivityKind.progress:
+          return t.activityProgress(who, a.to ?? '0');
+        case TaskActivityKind.assigned:
+          final people = (a.to ?? '')
+              .split(',')
+              .where((id) => id.isNotEmpty)
+              .map(nameOf)
+              .join(', ');
+          return t.activityAssigned(who, people);
+        case TaskActivityKind.attachment:
+          return t.activityAttached(who, a.to ?? '');
+      }
+    }
+
+    IconData iconOf(TaskActivityKind kind) => switch (kind) {
+          TaskActivityKind.created => Icons.add_circle_outline,
+          TaskActivityKind.status => Icons.swap_horiz,
+          TaskActivityKind.progress => Icons.trending_up,
+          TaskActivityKind.assigned => Icons.person_add_alt,
+          TaskActivityKind.attachment => Icons.attach_file,
+        };
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final a in entries)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(iconOf(a.kind), size: 16, color: scheme.outline),
+                const SizedBox(width: 10),
+                Expanded(child: Text(describe(a))),
+                const SizedBox(width: 8),
+                Text(
+                  formatRelative(a.at, locale, t),
+                  style: Theme.of(context).textTheme.labelSmall,
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _AttachmentTile extends ConsumerWidget {
+  const _AttachmentTile({required this.attachment, this.onRemove});
+
+  final Attachment attachment;
+  final VoidCallback? onRemove;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = tr(context);
+    final local = ref.watch(mediaRepositoryProvider).localBytes(attachment.url);
+    final scheme = Theme.of(context).colorScheme;
+
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      dense: true,
+      leading: SizedBox(
+        width: 40,
+        height: 40,
+        child: attachment.isImage && local != null
+            ? ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.memory(local, fit: BoxFit.cover),
+              )
+            : Container(
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  attachment.isImage
+                      ? Icons.image_outlined
+                      : attachment.isAudio
+                          ? Icons.audiotrack_outlined
+                          : Icons.insert_drive_file_outlined,
+                  size: 20,
+                ),
+              ),
+      ),
+      title: Text(attachment.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: Text(
+        attachment.readableSize.isEmpty
+            ? readableBytes(attachment.sizeBytes)
+            : attachment.readableSize,
+      ),
+      trailing: onRemove == null
+          ? null
+          : IconButton(
+              tooltip: t.removeAttachment,
+              icon: const Icon(Icons.close, size: 18),
+              onPressed: onRemove,
+            ),
+    );
+  }
+}

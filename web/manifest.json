@@ -1,0 +1,11 @@
+{
+  "name": "CTG Hub",
+  "short_name": "CTG Hub",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#F2F3F1",
+  "theme_color": "#2E4A3A",
+  "description": "Team chat, task management and a shared agenda for CTG members.",
+  "orientation": "portrait-primary",
+  "prefer_related_applications": false
+}

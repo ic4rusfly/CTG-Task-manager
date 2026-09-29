@@ -1,0 +1,634 @@
+import 'dart:typed_data';
+
+import 'package:ctg_hub/data/mock/mock_db.dart';
+import 'package:ctg_hub/data/mock/mock_repositories.dart';
+import 'package:ctg_hub/core/receipts.dart';
+import 'package:ctg_hub/domain/models/models.dart';
+import 'package:ctg_hub/domain/push_service.dart';
+import 'package:ctg_hub/domain/repositories/repositories.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  late MockDb db;
+  late MockTaskRepository tasks;
+  late MockChatRepository chat;
+  late MockAgendaRepository agenda;
+
+  setUp(() {
+    db = MockDb();
+    tasks = MockTaskRepository(db);
+    chat = MockChatRepository(db);
+    agenda = MockAgendaRepository(db);
+  });
+
+  Task template() => Task(
+        id: '',
+        key: '',
+        title: 'Onboard new members',
+        reporterId: 'u1',
+        createdAt: DateTime.now(),
+      );
+
+  group('group assignment', () {
+    test('one shared task keeps every assignee on a single card', () async {
+      final created = await tasks.assignToGroup(
+        template: template(),
+        assigneeIds: ['u3', 'u5', 'u6'],
+      );
+
+      expect(created, hasLength(1));
+      expect(created.single.assigneeIds, ['u3', 'u5', 'u6']);
+      expect(created.single.groupAssignmentId, isNotNull);
+      expect(created.single.key, startsWith('CTG-'));
+    });
+
+    test('clone per assignee creates one task each, sharing a group id', () async {
+      final created = await tasks.assignToGroup(
+        template: template(),
+        assigneeIds: ['u3', 'u5', 'u6'],
+        clonePerAssignee: true,
+      );
+
+      expect(created, hasLength(3));
+      expect(created.map((t) => t.assigneeIds.single), ['u3', 'u5', 'u6']);
+      expect(created.map((t) => t.groupAssignmentId).toSet(), hasLength(1));
+      expect(created.map((t) => t.key).toSet(), hasLength(3), reason: 'keys must be unique');
+    });
+  });
+
+  group('task updates', () {
+    test('moving to done forces progress to 100', () async {
+      await tasks.setStatus('k1', TaskStatus.done);
+      final task = db.tasks.firstWhere((t) => t.id == 'k1');
+      expect(task.progress, 100);
+      expect(task.completedAt, isNotNull);
+    });
+
+    test('setting progress to 100 marks the task done', () async {
+      await tasks.setProgress('k2', 100);
+      expect(db.tasks.firstWhere((t) => t.id == 'k2').status, TaskStatus.done);
+    });
+
+    test('toggling a checklist item recomputes the derived progress', () async {
+      await tasks.toggleChecklistItem('k1', 'c');
+      final task = db.tasks.firstWhere((t) => t.id == 'k1');
+      expect(task.checklistDone, 3);
+      expect(task.effectiveProgress, 100);
+    });
+  });
+
+  group('chat', () {
+    test('sending a message updates the channel preview', () async {
+      await chat.sendMessage(Message(
+        id: '',
+        channelId: 'c_general',
+        senderId: 'u2',
+        sentAt: DateTime.now(),
+        text: 'Standup in five minutes',
+      ));
+
+      final channel = db.channels.firstWhere((c) => c.id == 'c_general');
+      expect(channel.lastMessageText, 'Standup in five minutes');
+      expect(channel.lastMessageSenderId, 'u2');
+    });
+
+    test('openDm reuses an existing conversation', () async {
+      final first = await chat.openDm('u1', 'u2');
+      final again = await chat.openDm('u2', 'u1');
+      expect(again.id, first.id);
+    });
+
+    test('openDm creates a conversation when there is none', () async {
+      final channel = await chat.openDm('u1', 'u6');
+      expect(channel.type, ChannelType.dm);
+      expect(channel.memberIds, containsAll(<String>['u1', 'u6']));
+    });
+
+    test('reactions toggle on and off', () async {
+      await chat.toggleReaction('c_general', 'm1', 'ack', 'u3');
+      expect(db.messages['c_general']!.first.reactions['ack'], contains('u3'));
+
+      await chat.toggleReaction('c_general', 'm1', 'ack', 'u3');
+      expect(db.messages['c_general']!.first.reactions['ack'], isNot(contains('u3')));
+    });
+  });
+
+  test('agenda rsvp is stored per member', () async {
+    await agenda.setRsvp('e1', 'u3', Rsvp.going);
+    expect(db.events.firstWhere((e) => e.id == 'e1').rsvp['u3'], Rsvp.going);
+  });
+
+  group('notifications', notificationTests);
+  group('threads', threadTests);
+  group('media', mediaTests);
+  group('push', pushTests);
+  group('mute and receipts', muteAndReceiptTests);
+  group('editing and task files', editAndTaskFileTests);
+  group('task activity', activityTests);
+  group('message search', searchTests);
+}
+
+// ---------------------------------------------------------------------------
+// Search. The mock scans; Firestore runs the same contract as one indexed
+// collection-group query over the keywords array.
+// ---------------------------------------------------------------------------
+void searchTests() {
+  late MockDb db;
+  late MockChatRepository chat;
+
+  setUp(() {
+    db = MockDb();
+    chat = MockChatRepository(db);
+  });
+
+  List<String> myChannels() =>
+      db.channels.where((c) => c.memberIds.contains('u1')).map((c) => c.id).toList();
+
+  test('finds a message across conversations, newest first', () async {
+    final hits = await chat.searchMessages(query: 'onboarding', channelIds: myChannels());
+    expect(hits, isNotEmpty);
+    expect(hits.first.searchable.toLowerCase(), contains('onboarding'));
+    for (var i = 1; i < hits.length; i++) {
+      expect(hits[i - 1].sentAt.isAfter(hits[i].sentAt), isTrue);
+    }
+  });
+
+  test('matches attachment names as well as text', () async {
+    final hits = await chat.searchMessages(query: 'venue-contract', channelIds: myChannels());
+    expect(hits.single.attachments.single.name, 'venue-contract.pdf');
+  });
+
+  test('never returns a conversation I do not belong to', () async {
+    final hits = await chat.searchMessages(query: 'palette', channelIds: myChannels());
+    expect(hits, isEmpty, reason: 'c_dm_2_3 has no u1');
+  });
+
+  test('skips deleted messages and short queries', () async {
+    await chat.deleteMessage('c_general', 'm1');
+    final hits = await chat.searchMessages(query: 'Thursday', channelIds: myChannels());
+    expect(hits.map((m) => m.id), isNot(contains('m1')));
+    expect(await chat.searchMessages(query: 'a', channelIds: myChannels()), isEmpty);
+  });
+
+  test('every stored message carries its search keywords', () {
+    final message = db.messages['c_general']!.first;
+    expect(message.toMap()['keywords'], contains('thursday'));
+    expect(message.toMap()['channelId'], 'c_general');
+  });
+}
+
+// ---------------------------------------------------------------------------
+// The task trail, written by the repository the same way the Cloud Functions
+// write tasks/{id}/activity in production.
+// ---------------------------------------------------------------------------
+void activityTests() {
+  late MockDb db;
+  late MockTaskRepository tasks;
+  late MockMediaRepository media;
+
+  setUp(() {
+    db = MockDb();
+    db.currentUserId = 'u2';
+    tasks = MockTaskRepository(db);
+    media = MockMediaRepository(db);
+  });
+
+  test('the seeded trail is newest first', () async {
+    final trail = await tasks.watchActivity('k1').first;
+    expect(trail, isNotEmpty);
+    expect(trail.first.at.isAfter(trail.last.at), isTrue);
+    expect(trail.last.kind, TaskActivityKind.created);
+  });
+
+  test('a status change is recorded with both values', () async {
+    final before = (await tasks.watchActivity('k1').first).length;
+    await tasks.setStatus('k1', TaskStatus.done);
+    final trail = await tasks.watchActivity('k1').first;
+
+    expect(trail, hasLength(before + 1));
+    expect(trail.first.kind, TaskActivityKind.status);
+    expect(trail.first.to, 'done');
+    expect(trail.first.actorId, 'u2');
+  });
+
+  test('setting the same status again records nothing', () async {
+    await tasks.setStatus('k1', TaskStatus.done);
+    final after = (await tasks.watchActivity('k1').first).length;
+    await tasks.setStatus('k1', TaskStatus.done);
+    expect(await tasks.watchActivity('k1').first, hasLength(after));
+  });
+
+  test('creating a task logs creation and assignment', () async {
+    final created = await tasks.createTask(Task(
+      id: '',
+      key: '',
+      title: 'Book the venue',
+      reporterId: 'u1',
+      assigneeIds: const ['u4'],
+      createdAt: DateTime.now(),
+    ));
+    final trail = await tasks.watchActivity(created.id).first;
+    expect(trail.map((a) => a.kind),
+        containsAll([TaskActivityKind.created, TaskActivityKind.assigned]));
+  });
+
+  test('attaching a file shows up in the trail', () async {
+    final attachment = await media.upload(
+      folder: 'tasks/k2',
+      fileName: 'venue.pdf',
+      mime: 'application/pdf',
+      bytes: Uint8List.fromList([1, 2, 3]),
+    );
+    await tasks.addAttachment('k2', attachment);
+    final trail = await tasks.watchActivity('k2').first;
+    expect(trail.first.kind, TaskActivityKind.attachment);
+    expect(trail.first.to, 'venue.pdf');
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Message editing and task attachments (the same MediaRepository as chat).
+// ---------------------------------------------------------------------------
+void editAndTaskFileTests() {
+  late MockDb db;
+  late MockChatRepository chat;
+  late MockTaskRepository tasks;
+  late MockMediaRepository media;
+
+  setUp(() {
+    db = MockDb();
+    chat = MockChatRepository(db);
+    tasks = MockTaskRepository(db);
+    media = MockMediaRepository(db);
+  });
+
+  test('editing rewrites the text and stamps editedAt', () async {
+    await chat.editMessage('c_general', 'm1', 'Reminder: the review moved to Friday.');
+    final message = db.messages['c_general']!.firstWhere((m) => m.id == 'm1');
+    expect(message.text, endsWith('Friday.'));
+    expect(message.editedAt, isNotNull);
+  });
+
+  test('editing the newest message refreshes the conversation preview', () async {
+    final roots = db.messages['c_general']!.where((m) => m.replyToId == null).toList();
+    await chat.editMessage('c_general', roots.last.id, 'Updated preview');
+    final channel = db.channels.firstWhere((c) => c.id == 'c_general');
+    expect(channel.lastMessageText, 'Updated preview');
+  });
+
+  test('a deleted message cannot be edited', () async {
+    await chat.deleteMessage('c_general', 'm1');
+    await chat.editMessage('c_general', 'm1', 'Sneaky');
+    final message = db.messages['c_general']!.firstWhere((m) => m.id == 'm1');
+    expect(message.text, isEmpty);
+    expect(message.deleted, isTrue);
+  });
+
+  test('task attachments go through the same upload path as chat', () async {
+    final attachment = await media.upload(
+      folder: 'tasks/k1',
+      fileName: 'budget.csv',
+      mime: 'text/csv',
+      bytes: Uint8List.fromList(List<int>.filled(512, 3)),
+    );
+    await tasks.addAttachment('k1', attachment);
+
+    final task = db.tasks.firstWhere((t) => t.id == 'k1');
+    expect(task.attachments.single.name, 'budget.csv');
+    expect(task.updatedAt, isNotNull);
+
+    await tasks.removeAttachment('k1', attachment.url);
+    expect(db.tasks.firstWhere((t) => t.id == 'k1').attachments, isEmpty);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Muting a conversation and read receipts.
+// ---------------------------------------------------------------------------
+void muteAndReceiptTests() {
+  late MockDb db;
+  late MockNotificationRepository notifications;
+  late MockChatRepository chat;
+  late MockUserRepository users;
+
+  setUp(() {
+    db = MockDb();
+    notifications = MockNotificationRepository(db);
+    chat = MockChatRepository(db, MockNotifier(db, notifications));
+    users = MockUserRepository(db);
+  });
+
+  Message reply(String text, {List<String> mentions = const []}) => Message(
+        id: '',
+        channelId: 'c_general',
+        senderId: 'u3',
+        sentAt: DateTime.now(),
+        text: text,
+        replyToId: 'm1',
+        mentions: mentions,
+      );
+
+  test('muting is per member and per conversation', () async {
+    await users.setChannelMuted('u1', 'c_general', true);
+    expect(db.users.firstWhere((u) => u.id == 'u1').mutedChannels, ['c_general']);
+    expect(db.users.firstWhere((u) => u.id == 'u2').mutedChannels, isEmpty);
+
+    await users.setChannelMuted('u1', 'c_general', false);
+    expect(db.users.firstWhere((u) => u.id == 'u1').mutedChannels, isEmpty);
+  });
+
+  test('a muted conversation sends no thread notification', () async {
+    await users.setChannelMuted('u1', 'c_general', true);
+    await chat.sendMessage(reply('Ping.'));
+    expect(db.notifications['u1'] ?? const <AppNotification>[], isEmpty);
+  });
+
+  test('a mention still gets through a mute', () async {
+    await users.setChannelMuted('u1', 'c_general', true);
+    await chat.sendMessage(reply('Ping @Yasmine', mentions: const ['u1']));
+    final mentions = (db.notifications['u1'] ?? const <AppNotification>[])
+        .where((n) => n.kind == NotificationKind.mention);
+    expect(mentions, hasLength(1));
+  });
+
+  test('read receipts count the members who caught up', () async {
+    final channel = db.channels.firstWhere((c) => c.id == 'c_general');
+    final message = db.messages['c_general']!.firstWhere((m) => m.id == 'm6');
+
+    final readers = seenBy(channel, message);
+    expect(readers, isNot(contains(message.senderId)));
+    expect(readers, contains('u2'));
+    expect(seenByAll(channel, message), isFalse);
+  });
+
+  test('marking a conversation read updates the receipt', () async {
+    final before = db.channels.firstWhere((c) => c.id == 'c_dm_2_3');
+    final message = db.messages['c_dm_2_3']!.last;
+    expect(seenBy(before, message), isEmpty);
+
+    await chat.markRead('c_dm_2_3', 'u2');
+    final after = db.channels.firstWhere((c) => c.id == 'c_dm_2_3');
+    expect(seenBy(after, message), ['u2']);
+    expect(seenByAll(after, message), isTrue);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Push registration. The mock stands in for FCM and replays notifications as
+// foreground messages, which is what drives the in-app banner.
+// ---------------------------------------------------------------------------
+void pushTests() {
+  late MockDb db;
+  late MockNotificationRepository notifications;
+  late MockPushService push;
+
+  setUp(() {
+    db = MockDb();
+    notifications = MockNotificationRepository(db);
+    push = MockPushService(db);
+  });
+
+  AppNotification notification(String uid) => AppNotification(
+        id: '',
+        uid: uid,
+        kind: NotificationKind.mention,
+        title: 'Omar Idrissi mentioned you',
+        body: 'Can you review this?',
+        route: '/chat/c_general',
+        createdAt: DateTime.now(),
+      );
+
+  test('permission starts undecided and is granted on registration', () async {
+    expect(await push.status(), PushPermission.notDetermined);
+    expect(await push.register('u1'), PushPermission.granted);
+    expect(await push.currentToken(), 'mock-device-u1');
+  });
+
+  test('a new notification arrives as a foreground message', () async {
+    await push.register('u2');
+    final next = push.foregroundMessages.first;
+    await notifications.add(notification('u2'));
+
+    final message = await next.timeout(const Duration(seconds: 2));
+    expect(message.title, contains('mentioned you'));
+    expect(message.route, '/chat/c_general');
+    expect(message.kind, 'mention');
+  });
+
+  test('notifications seeded before registration are not replayed', () async {
+    await notifications.add(notification('u2'));
+    await push.register('u2');
+
+    var delivered = false;
+    final sub = push.foregroundMessages.listen((_) => delivered = true);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    await sub.cancel();
+    expect(delivered, isFalse);
+  });
+
+  test('signing out drops the token and stops delivery', () async {
+    await push.register('u2');
+    await push.unregister('u2');
+    expect(await push.currentToken(), isNull);
+    expect(await push.status(), PushPermission.notDetermined);
+
+    var delivered = false;
+    final sub = push.foregroundMessages.listen((_) => delivered = true);
+    await notifications.add(notification('u2'));
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    await sub.cancel();
+    expect(delivered, isFalse);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Threads: replies hang off a root message, never show in the timeline, and
+// keep the root's counter up to date.
+// ---------------------------------------------------------------------------
+void threadTests() {
+  late MockDb db;
+  late MockNotificationRepository notifications;
+  late MockChatRepository chat;
+
+  setUp(() {
+    db = MockDb();
+    notifications = MockNotificationRepository(db);
+    chat = MockChatRepository(db, MockNotifier(db, notifications));
+  });
+
+  Message reply(String from, String text) => Message(
+        id: '',
+        channelId: 'c_general',
+        senderId: from,
+        sentAt: DateTime.now(),
+        text: text,
+        replyToId: 'm1',
+      );
+
+  test('the seeded thread is readable and excluded from the timeline', () async {
+    final replies = await chat.watchThread('c_general', 'm1').first;
+    expect(replies, hasLength(2));
+    expect(replies.every((m) => m.replyToId == 'm1'), isTrue);
+
+    final timeline = await chat.watchMessages('c_general').first;
+    expect(timeline.where((m) => m.replyToId != null), isEmpty,
+        reason: 'the channel view filters replies out by replyToId');
+  });
+
+  test('a reply increments the root threadCount', () async {
+    await chat.sendMessage(reply('u3', 'One more thing.'));
+    final root = db.messages['c_general']!.firstWhere((m) => m.id == 'm1');
+    expect(root.threadCount, 3);
+    expect(await chat.watchThread('c_general', 'm1').first, hasLength(3));
+  });
+
+  test('replying notifies the root author in their language', () async {
+    await chat.sendMessage(reply('u3', 'Works for me.'));
+    // m1 was written by u1, who reads French.
+    final notification = db.notifications['u1']!.last;
+    expect(notification.title, contains('a répondu'));
+    expect(notification.route, '/chat/c_general/thread/m1');
+  });
+
+  test('replying to yourself does not notify you', () async {
+    await chat.sendMessage(reply('u1', 'Adding a detail.'));
+    expect(db.notifications['u1'] ?? const <AppNotification>[], isEmpty);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Attachment upload (the mock stands in for Cloud Storage).
+// ---------------------------------------------------------------------------
+void mediaTests() {
+  late MockDb db;
+  late MockMediaRepository media;
+
+  setUp(() {
+    db = MockDb();
+    media = MockMediaRepository(db);
+  });
+
+  test('upload reports progress and returns a readable attachment', () async {
+    final progress = <double>[];
+    final attachment = await media.upload(
+      folder: 'chat/c_general',
+      fileName: 'poster.png',
+      mime: 'image/png',
+      bytes: Uint8List.fromList(List<int>.filled(2048, 7)),
+      onProgress: progress.add,
+    );
+
+    expect(progress, isNotEmpty);
+    expect(progress.last, 1);
+    expect(attachment.isImage, isTrue);
+    expect(attachment.sizeBytes, 2048);
+    expect(attachment.readableSize, '2.0 KB');
+    expect(media.localBytes(attachment.url), hasLength(2048));
+  });
+
+  test('files above the storage limit are rejected', () async {
+    expect(
+      () => media.upload(
+        folder: 'chat/c_general',
+        fileName: 'huge.bin',
+        mime: 'application/octet-stream',
+        bytes: Uint8List(MediaRepository.maxBytes + 1),
+      ),
+      throwsA(isA<MediaTooLargeException>()),
+    );
+  });
+
+  test('deleting an attachment drops the bytes', () async {
+    final attachment = await media.upload(
+      folder: 'chat/c_general',
+      fileName: 'note.txt',
+      mime: 'text/plain',
+      bytes: Uint8List.fromList([1, 2, 3]),
+    );
+    await media.delete(attachment.url);
+    expect(media.localBytes(attachment.url), isNull);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Notifications: composed in the recipient's language, exactly like the
+// Cloud Functions do in production.
+// ---------------------------------------------------------------------------
+void notificationTests() {
+  late MockDb db;
+  late MockNotificationRepository notifications;
+  late MockNotifier notifier;
+  late MockTaskRepository tasks;
+  late MockChatRepository chat;
+
+  setUp(() {
+    db = MockDb();
+    notifications = MockNotificationRepository(db);
+    notifier = MockNotifier(db, notifications);
+    tasks = MockTaskRepository(db, notifier);
+    chat = MockChatRepository(db, notifier);
+  });
+
+  test('assigning a task notifies every assignee but not the reporter', () async {
+    await tasks.assignToGroup(
+      template: Task(
+        id: '',
+        key: '',
+        title: 'Prepare sponsor emails',
+        reporterId: 'u1',
+        createdAt: DateTime.now(),
+      ),
+      assigneeIds: ['u1', 'u3', 'u5'],
+    );
+
+    expect(db.notifications['u1']?.where((n) => n.kind == NotificationKind.taskAssigned) ?? [],
+        isEmpty);
+    expect(db.notifications['u3'], hasLength(1));
+    expect(db.notifications['u5'], hasLength(1));
+  });
+
+  test('notification copy uses the recipient locale', () async {
+    await tasks.assignToGroup(
+      template: Task(
+        id: '',
+        key: '',
+        title: 'Prepare sponsor emails',
+        reporterId: 'u2',
+        createdAt: DateTime.now(),
+      ),
+      assigneeIds: ['u3', 'u6'], // u3 reads Arabic, u6 reads English
+    );
+
+    expect(db.notifications['u3']!.single.title, contains('أسند'));
+    expect(db.notifications['u6']!.single.title, contains('assigned'));
+  });
+
+  test('mentioning someone in a message notifies them', () async {
+    await chat.sendMessage(Message(
+      id: '',
+      channelId: 'c_general',
+      senderId: 'u1',
+      sentAt: DateTime.now(),
+      text: 'can you look at this @Omar',
+      mentions: const ['u2'],
+    ));
+
+    final item = db.notifications['u2']!.single;
+    expect(item.kind, NotificationKind.mention);
+    expect(item.route, '/chat/c_general');
+  });
+
+  test('markAllRead clears the unread badge', () async {
+    await notifications.add(AppNotification(
+      id: '',
+      uid: 'u2',
+      kind: NotificationKind.message,
+      title: 'x',
+      body: 'y',
+      route: '/chat/c_general',
+      createdAt: DateTime.now(),
+    ));
+    await notifications.markAllRead('u2');
+    expect(db.notifications['u2']!.every((n) => n.read), isTrue);
+  });
+}
